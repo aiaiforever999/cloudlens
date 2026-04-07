@@ -1,0 +1,3473 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CloudLens v2 — Cloud Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+
+/* ─── RESET ─────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;-webkit-font-smoothing:antialiased}
+body{font-family:'Noto Sans Thai','Syne',sans-serif;font-size:13.5px;line-height:1.55;background:#060c1a;color:#e8f0fe}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:#1e3050;border-radius:2px}
+
+/* ─── CSS VARIABLES ─────────────────────── */
+:root{
+  --bg:#060c1a; --bg2:#09112a; --sur:#0d1830; --sur2:#121f3a; --sur3:#172540;
+  --bdr:#1a2f50; --bdr2:#223d68;
+  --blu:#3b82f6; --blu2:#2563eb;
+  --blu-g:rgba(59,130,246,.12); --blu-gs:rgba(59,130,246,.05);
+  --cyn:#06b6d4; --grn:#10b981; --amb:#f59e0b; --red:#ef4444; --vio:#8b5cf6;
+  --tx:#e8f0fe; --tx2:#7a98bc; --tx3:#3d5573;
+  --mono:'IBM Plex Mono',monospace;
+  --dis:'Syne','Noto Sans Thai',sans-serif;
+}
+
+/* ─── APP SHELL ──────────────────────────── */
+#app-page{display:none;height:100vh;overflow:hidden;flex-direction:column}
+
+/* Topbar */
+.topbar{
+  height:52px;display:flex;align-items:center;padding:0 1.25rem;gap:.75rem;
+  background:rgba(6,12,26,.97);border-bottom:1px solid var(--bdr);
+  flex-shrink:0;z-index:100;
+}
+.tb-logo{display:flex;align-items:center;gap:.5rem;font-family:var(--dis);font-weight:800;font-size:16px;letter-spacing:-.03em}
+.tb-logo-icon{width:27px;height:27px;border-radius:7px;background:linear-gradient(135deg,var(--blu2),var(--cyn));display:flex;align-items:center;justify-content:center;font-size:13px}
+.tb-badge{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(16,185,129,.15);color:var(--grn);border:1px solid rgba(16,185,129,.3)}
+.tb-nav{display:flex;gap:2px;margin-left:.5rem}
+.tb-btn{padding:.32rem .72rem;border-radius:6px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:transparent;color:var(--tx2);transition:all .15s;font-family:inherit}
+.tb-btn:hover{background:var(--sur2);color:var(--tx)}
+.tb-btn.on{background:var(--blu-g);color:var(--blu)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:.65rem}
+.tb-live{display:flex;align-items:center;gap:.35rem;font-size:11px;color:var(--tx3);font-family:var(--mono)}
+.tb-live-dot{width:6px;height:6px;border-radius:50%;background:var(--grn);box-shadow:0 0 5px var(--grn);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.user-pill{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.28rem .6rem;border-radius:20px;
+  background:var(--sur2);border:1px solid var(--bdr);
+  font-size:11.5px;cursor:pointer;
+}
+.u-avatar{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,var(--blu),var(--vio));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.role-pill{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);font-weight:700}
+.rp-admin{background:rgba(245,158,11,.15);color:var(--amb);border:1px solid rgba(245,158,11,.3)}
+.rp-viewer{background:var(--blu-g);color:var(--blu);border:1px solid rgba(59,130,246,.2)}
+.tb-logout{padding:.3rem .65rem;border-radius:6px;background:transparent;border:1px solid var(--bdr);color:var(--tx2);font-size:11px;cursor:pointer;font-family:inherit}
+.tb-logout:hover{border-color:var(--red);color:var(--red)}
+
+/* App body */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* Sidebar */
+.sidebar{
+  width:208px;background:var(--sur);border-right:1px solid var(--bdr);
+  overflow-y:auto;padding:.6rem .45rem;flex-shrink:0;
+  display:flex;flex-direction:column;gap:.08rem;
+}
+.sb-grp{font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;padding:.6rem .55rem .25rem;margin-top:.35rem;font-family:var(--mono)}
+.sb-btn{
+  display:flex;align-items:center;gap:.5rem;padding:.42rem .6rem;border-radius:6px;
+  font-size:12.5px;font-weight:500;color:var(--tx2);cursor:pointer;
+  border:none;background:transparent;width:100%;text-align:left;font-family:inherit;
+  transition:all .15s;position:relative;
+}
+.sb-btn:hover{background:var(--sur2);color:var(--tx)}
+.sb-btn.on{background:var(--blu-g);color:var(--blu)}
+.sb-btn.on::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:2px;background:var(--blu);border-radius:1px}
+.sb-ic{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-tag{margin-left:auto;font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);font-weight:700}
+.st-green{background:rgba(16,185,129,.12);color:var(--grn);border:1px solid rgba(16,185,129,.2)}
+.st-blue{background:var(--blu-g);color:var(--blu);border:1px solid rgba(59,130,246,.2)}
+.st-red{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+
+/* Content */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.page{display:none;flex:1;overflow-y:auto;padding:1.5rem}
+.page.on{display:block}
+.pg-title{font-family:var(--dis);font-size:21px;font-weight:800;letter-spacing:-.03em;margin-bottom:.3rem}
+.pg-sub{font-size:12.5px;color:var(--tx2);margin-bottom:1.4rem}
+
+/* ─── COMPONENTS ──────────────────────────── */
+/* Cards */
+.card{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:1.1rem 1.2rem}
+.card:hover{border-color:var(--bdr2)}
+.card-sm{padding:.8rem 1rem}
+.card-t{font-size:11px;font-weight:700;color:var(--tx2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;font-family:var(--mono)}
+
+/* Grid */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem}
+
+/* KPI */
+.kpi{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:.95rem 1.1rem}
+.kpi-lbl{font-size:10.5px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:.3rem}
+.kpi-val{font-family:var(--dis);font-size:23px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.kpi-sub{font-size:11px;color:var(--tx2);margin-top:.25rem}
+.kpi-tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-top:.3rem}
+.kt-green{background:rgba(16,185,129,.1);color:var(--grn);border:1px solid rgba(16,185,129,.2)}
+.kt-amber{background:rgba(245,158,11,.1);color:var(--amb);border:1px solid rgba(245,158,11,.2)}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap;font-family:var(--mono)}
+.b-aws{background:rgba(255,153,0,.1);color:#ff9900;border:1px solid rgba(255,153,0,.2)}
+.b-azure{background:rgba(0,120,212,.1);color:#0078d4;border:1px solid rgba(0,120,212,.2)}
+.b-gcp{background:rgba(66,133,244,.1);color:#4285f4;border:1px solid rgba(66,133,244,.2)}
+.b-oracle{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.b-do{background:rgba(0,105,255,.1);color:#0069ff;border:1px solid rgba(0,105,255,.2)}
+.b-uih{background:rgba(139,92,246,.1);color:#8b5cf6;border:1px solid rgba(139,92,246,.2)}
+.b-nipa{background:rgba(16,185,129,.1);color:var(--grn);border:1px solid rgba(16,185,129,.2)}
+.b-proen{background:rgba(245,158,11,.1);color:var(--amb);border:1px solid rgba(245,158,11,.2)}
+.b-nt{background:rgba(236,72,153,.1);color:#ec4899;border:1px solid rgba(236,72,153,.2)}
+.b-green{background:rgba(16,185,129,.1);color:var(--grn);border:1px solid rgba(16,185,129,.2)}
+.b-amber{background:rgba(245,158,11,.1);color:var(--amb);border:1px solid rgba(245,158,11,.2)}
+.b-red{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.b-blue{background:var(--blu-g);color:var(--blu);border:1px solid rgba(59,130,246,.2)}
+.b-gray{background:var(--sur2);color:var(--tx2);border:1px solid var(--bdr)}
+.b-auto{background:rgba(6,182,212,.1);color:var(--cyn);border:1px solid rgba(6,182,212,.2)}
+.b-manual{background:rgba(139,92,246,.1);color:var(--vio);border:1px solid rgba(139,92,246,.2)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--bdr)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:500px}
+thead{background:var(--sur2)}
+th{padding:.58rem .85rem;text-align:left;font-size:10.5px;font-weight:700;color:var(--tx2);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--bdr);white-space:nowrap;font-family:var(--mono)}
+td{padding:.52rem .85rem;border-bottom:1px solid var(--bdr);color:var(--tx);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.015)}
+td.num{font-family:var(--mono);font-size:12px}
+td.best{color:var(--grn);font-weight:700;font-family:var(--mono)}
+td.worst{color:var(--red);font-family:var(--mono)}
+
+/* Form */
+.field{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.65rem}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.lbl{font-size:11px;font-weight:700;color:var(--tx2);letter-spacing:.05em;text-transform:uppercase;font-family:var(--mono)}
+input,select,textarea{
+  background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;
+  color:var(--tx);font-family:inherit;font-size:13px;padding:.5rem .75rem;
+  outline:none;width:100%;transition:border-color .2s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--blu);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+select option{background:var(--sur2)}
+input::placeholder{color:var(--tx3)}
+
+/* Buttons */
+.btn{padding:.44rem 1rem;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit}
+.btn-pri{background:var(--blu2);border-color:var(--blu);color:#fff}
+.btn-pri:hover{background:var(--blu)}
+.btn-ghost{background:transparent;border-color:var(--bdr2);color:var(--tx2)}
+.btn-ghost:hover{border-color:var(--blu);color:var(--blu)}
+.btn-grn{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:var(--grn)}
+.btn-grn:hover{background:rgba(16,185,129,.22)}
+.btn-amb{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:var(--amb)}
+.btn-red{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:var(--red)}
+.btn-red:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:.27rem .6rem;font-size:11px}
+
+/* Filter bar */
+.fbar{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+.fc{padding:.27rem .6rem;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--bdr);cursor:pointer;background:transparent;color:var(--tx2);transition:all .15s;font-family:var(--mono)}
+.fc.on{background:var(--blu-g);color:var(--blu);border-color:rgba(59,130,246,.3)}
+.s-input{padding:.33rem .72rem;border-radius:6px;border:1px solid var(--bdr);background:var(--bg2);color:var(--tx);font-size:12px;font-family:inherit;outline:none;min-width:185px}
+.s-input:focus{border-color:var(--blu)}
+.s-input::placeholder{color:var(--tx3)}
+
+/* Info boxes */
+.info{display:flex;gap:.5rem;align-items:flex-start;padding:.6rem .85rem;border-radius:7px;font-size:12px;line-height:1.6;margin-bottom:.75rem}
+.info-blue{background:var(--blu-gs);border:1px solid rgba(59,130,246,.15);color:#7ab3f0}
+.info-green{background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);color:#6ec89a}
+.info-amber{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);color:#c8a060}
+.info-red{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);color:#d88090}
+
+/* Progress */
+.progress{height:5px;background:var(--sur3);border-radius:3px;overflow:hidden}
+.pf{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* Section heading */
+.sh{font-size:10.5px;font-weight:700;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;padding-bottom:.45rem;margin-bottom:.85rem;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:.4rem;font-family:var(--mono)}
+.sh::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--bdr),transparent)}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--sur);border:1px solid var(--bdr2);border-radius:14px;padding:1.5rem;min-width:400px;max-width:540px;width:90%;position:relative;animation:mIn .2s ease}
+@keyframes mIn{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blu),var(--cyn));border-radius:14px 14px 0 0}
+.modal-title{font-family:var(--dis);font-size:16px;font-weight:700;margin-bottom:1.2rem}
+.modal-x{position:absolute;top:1rem;right:1rem;cursor:pointer;color:var(--tx3);font-size:18px;line-height:1;background:none;border:none}
+.modal-x:hover{color:var(--red)}
+.modal-foot{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.2rem;padding-top:.85rem;border-top:1px solid var(--bdr)}
+
+/* Metric card */
+.mc{background:var(--sur);border:1px solid var(--bdr);border-radius:11px;padding:.85rem 1rem;position:relative;overflow:hidden;transition:border-color .2s}
+.mc:hover{border-color:var(--bdr2)}
+.mc::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent,var(--blu))}
+.mc-name{font-size:11px;color:var(--tx2);font-family:var(--mono);margin-bottom:.3rem}
+.mc-val{font-family:var(--dis);font-size:20px;font-weight:800;letter-spacing:-.03em}
+.mc-bar{height:4px;background:var(--sur3);border-radius:2px;margin-top:.5rem;overflow:hidden}
+.mc-bar-fill{height:100%;border-radius:2px;background:var(--accent,var(--blu));transition:width .5s}
+
+/* Log line */
+.log-line{display:flex;gap:.75rem;padding:.18rem 0;border-bottom:1px solid rgba(255,255,255,.03);font-family:var(--mono);font-size:11.5px;line-height:1.7}
+
+/* Toggle */
+.toggle{position:relative;width:34px;height:18px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;inset:0;background:var(--sur3);border-radius:9px;cursor:pointer;transition:.25s}
+.tog-sl::before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s}
+.toggle input:checked+.tog-sl{background:var(--grn)}
+.toggle input:checked+.tog-sl::before{transform:translateX(16px)}
+
+/* Spinner */
+.spin{width:15px;height:15px;border:2px solid var(--bdr2);border-top-color:var(--blu);border-radius:50%;animation:spinning .6s linear infinite;display:inline-block}
+@keyframes spinning{to{transform:rotate(360deg)}}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
+  padding:.52rem 1.1rem;border-radius:8px;font-size:12px;font-weight:600;font-family:var(--mono);
+  background:var(--sur2);border:1px solid rgba(16,185,129,.3);color:var(--grn);
+  transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;
+}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.err{border-color:rgba(239,68,68,.3);color:var(--red)}
+
+/* PE status row */
+.pe-row{display:flex;align-items:center;gap:.5rem;padding:.42rem .72rem;border-radius:6px;font-size:11.5px;border:1px solid var(--bdr);margin-bottom:.4rem}
+.pe-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.pe-live{background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2)}
+.pe-live .pe-dot{background:var(--grn);box-shadow:0 0 5px var(--grn)}
+.pe-manual{background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.2)}
+.pe-manual .pe-dot{background:var(--vio)}
+
+/* Alert card */
+.al-card{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--sur);border:1px solid var(--bdr);border-radius:10px;margin-bottom:.5rem}
+.al-card.triggered{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)}
+
+/* Savings row */
+.sv-row{display:grid;grid-template-columns:1.1fr 70px 1fr 65px;align-items:center;gap:.6rem;padding:.38rem 0}
+
+
+/* ─── UPLOAD / DROPZONE ─────────────────────────── */
+.dropzone{border:2px dashed var(--bdr2);border-radius:var(--r2);padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--sur)}
+.dropzone:hover,.dropzone.dragover{border-color:var(--blu);background:var(--blu-gs)}
+.dz-icon{font-size:36px;margin-bottom:.75rem;opacity:.6}
+.dz-title{font-family:var(--dis);font-size:15px;font-weight:700;margin-bottom:.35rem}
+.dz-sub{font-size:12px;color:var(--tx2)}
+/* ─── AI SETUP ───────────────────────────────────── */
+.ai-setup{background:var(--blu-gs);border:1px solid rgba(59,130,246,.2);border-radius:var(--r2);padding:1rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.ai-setup-label{font-size:12px;color:var(--tx2);flex:1;min-width:200px}
+.ai-key-input{flex:1;min-width:200px;font-family:var(--mono);font-size:12px}
+/* ─── CODE PREVIEW ───────────────────────────────── */
+.code-tabs{display:flex;border-bottom:1px solid var(--bdr);background:var(--sur2)}
+.ct{padding:.5rem .85rem;font-size:11px;font-family:var(--mono);color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.ct:hover{color:var(--tx2)}
+.ct.on{color:var(--blu);border-bottom-color:var(--blu)}
+.code-preview{background:var(--bg);border:none;border-radius:0;padding:.85rem 1rem;font-family:var(--mono);font-size:11.5px;line-height:1.8;color:#7c9cbf;overflow:auto;white-space:pre;flex:1}
+
+/* ─── LOGIN PAGE ─────────────────────────────────── */
+#login-page{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;
+  background:radial-gradient(ellipse at 25% 40%,rgba(59,130,246,.09),transparent 55%),
+             radial-gradient(ellipse at 75% 70%,rgba(16,185,129,.07),transparent 50%),
+             var(--bg);
+}
+.login-card{
+  width:400px;background:var(--sur);border:1px solid var(--bdr);
+  border-radius:16px;padding:2.25rem;position:relative;overflow:hidden;
+  box-shadow:0 24px 64px rgba(0,0,0,.4);
+}
+.login-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--blu),var(--cyn),var(--grn));
+}
+.lc-logo{display:flex;align-items:center;gap:.65rem;margin-bottom:.35rem}
+.lc-icon{
+  width:36px;height:36px;border-radius:9px;
+  background:linear-gradient(135deg,var(--blu2),var(--cyn));
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.lc-name{font-family:var(--dis);font-size:22px;font-weight:800;letter-spacing:-.03em}
+.lc-tag{font-size:11px;color:var(--tx3);font-family:var(--mono);margin-bottom:1.75rem}
+.login-field{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem}
+.login-field label{font-size:10.5px;font-weight:700;color:var(--tx2);letter-spacing:.07em;text-transform:uppercase;font-family:var(--mono)}
+.login-field input{
+  background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;
+  color:var(--tx);font-family:inherit;font-size:13.5px;padding:.6rem .85rem;
+  outline:none;width:100%;transition:border-color .2s,box-shadow .2s;
+}
+.login-field input:focus{border-color:var(--blu);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.login-field input::placeholder{color:var(--tx3)}
+.login-submit{
+  width:100%;padding:.65rem;background:var(--blu2);border:1px solid var(--blu);
+  border-radius:8px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;
+  font-family:inherit;transition:background .15s;margin-top:.25rem;
+}
+.login-submit:hover{background:var(--blu)}
+.login-submit:disabled{opacity:.5;cursor:not-allowed}
+.login-err{color:var(--red);font-size:12px;margin-top:.5rem;text-align:center;display:none}
+.login-divider{display:flex;align-items:center;gap:.65rem;color:var(--tx3);font-size:11px;margin:1.1rem 0}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.demo-btn{
+  width:100%;padding:.65rem;border:1px solid rgba(16,185,129,.4);border-radius:8px;
+  background:rgba(16,185,129,.08);color:var(--grn);font-weight:700;font-size:13.5px;
+  cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.demo-btn:hover{background:rgba(16,185,129,.15)}
+.login-footer{text-align:center;margin-top:1.25rem;font-size:11px;color:var(--tx3)}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<!-- ══════════════════════════════════════════
+     DATA
+══════════════════════════════════════════ -->
+<script>
+const PCOLOR={AWS:'#ff9900',Azure:'#0078d4',GCP:'#4285f4',Oracle:'#ef4444',DigitalOcean:'#0069ff',UIH:'#8b5cf6',NIPA:'#10b981',PROEN:'#f59e0b',NT:'#ec4899'};
+const PBADGE={AWS:'b-aws',Azure:'b-azure',GCP:'b-gcp',Oracle:'b-oracle',DigitalOcean:'b-do',UIH:'b-uih',NIPA:'b-nipa',PROEN:'b-proen',NT:'b-nt'};
+const PSHORT={AWS:'AWS',Azure:'Azure',GCP:'GCP',Oracle:'Oracle',DigitalOcean:'DO',UIH:'UIH',NIPA:'NIPA',PROEN:'PROEN',NT:'NT'};
+
+const DEFAULT_PRICING=[
+  {id:1,provider:'AWS',name:'m5.xlarge',cat:'compute',vcpu:4,ram:16,od_hr:.192,od_mo:140,ri_mo:89,ri_pct:36,region:'ap-southeast-7',source:'api',note:'Intel Xeon, EBS-only',updated:'2026-01-15'},
+  {id:2,provider:'AWS',name:'m6g.xlarge (Arm)',cat:'compute',vcpu:4,ram:16,od_hr:.154,od_mo:112,ri_mo:71,ri_pct:37,region:'ap-southeast-7',source:'api',note:'Graviton3 — ถูกกว่า x86 20%',updated:'2026-01-15'},
+  {id:3,provider:'Azure',name:'D4s v5',cat:'compute',vcpu:4,ram:16,od_hr:.192,od_mo:140,ri_mo:84,ri_pct:40,region:'southeastasia',source:'api',note:'Intel Xeon, Premium SSD',updated:'2026-01-15'},
+  {id:4,provider:'Azure',name:'D4ps v5 (Arm)',cat:'compute',vcpu:4,ram:16,od_hr:.067,od_mo:49,ri_mo:29,ri_pct:40,region:'southeastasia',source:'api',note:'🏆 Ampere Arm — ถูกกว่า x86 65%!',updated:'2026-01-15'},
+  {id:5,provider:'GCP',name:'n2-standard-4',cat:'compute',vcpu:4,ram:16,od_hr:.190,od_mo:138,ri_mo:79,ri_pct:43,region:'asia-southeast1',source:'api',note:'SUD included auto',updated:'2026-01-15'},
+  {id:6,provider:'GCP',name:'t2a-standard-4 (Arm)',cat:'compute',vcpu:4,ram:16,od_hr:.152,od_mo:111,ri_mo:64,ri_pct:43,region:'asia-southeast1',source:'api',note:'Ampere Altra Arm',updated:'2026-01-15'},
+  {id:7,provider:'Oracle',name:'VM.Standard3.Flex',cat:'compute',vcpu:4,ram:16,od_hr:.127,od_mo:93,ri_mo:65,ri_pct:30,region:'ap-singapore-1',source:'api',note:'ถูกสุดใน x86',updated:'2026-01-15'},
+  {id:8,provider:'Oracle',name:'VM.Standard.A1 (Arm)',cat:'compute',vcpu:4,ram:24,od_hr:0,od_mo:0,ri_mo:0,ri_pct:100,region:'ap-singapore-1',source:'api',note:'🏆 Always Free Forever!',updated:'2026-01-15'},
+  {id:9,provider:'DigitalOcean',name:'General Purpose 4vCPU',cat:'compute',vcpu:4,ram:8,od_hr:null,od_mo:63,ri_mo:null,ri_pct:null,region:'sgp1',source:'api',note:'Flat pricing, SSD incl.',updated:'2026-01-15'},
+  {id:10,provider:'UIH',name:'Standard 4vCPU/16GB',cat:'compute',vcpu:4,ram:16,od_hr:null,od_mo:343,ri_mo:343,ri_pct:0,region:'th-bkk',thb:12000,source:'manual',note:'BCH4 DC, Managed+Support ไทย',updated:'2026-01-10'},
+  {id:11,provider:'NIPA',name:'Cloud VM Standard',cat:'compute',vcpu:4,ram:16,od_hr:null,od_mo:300,ri_mo:280,ri_pct:7,region:'th-bkk',thb:10500,source:'manual',note:'Sovereign Cloud ไทย 100%',updated:'2026-01-05'},
+  {id:12,provider:'PROEN',name:'Cloud VM Standard',cat:'compute',vcpu:4,ram:16,od_hr:null,od_mo:320,ri_mo:300,ri_pct:6,region:'th-bkk',thb:11200,source:'manual',note:'ISP+IDC Thailand',updated:'2026-01-05'},
+  {id:13,provider:'NT',name:'NT Cloud VM',cat:'compute',vcpu:4,ram:16,od_hr:null,od_mo:280,ri_mo:260,ri_pct:7,region:'th-nationwide',thb:9800,source:'manual',note:'13 DC ทั่วไทย รัฐวิสาหกิจ',updated:'2026-01-05'},
+  {id:14,provider:'AWS',name:'S3 Standard',cat:'storage',vcpu:null,ram:null,od_hr:null,od_mo:23,ri_mo:null,ri_pct:null,region:'ap-southeast-7',source:'api',note:'$0.023/GB/mo, 1TB=$23',updated:'2026-01-15'},
+  {id:15,provider:'Azure',name:'Blob Hot',cat:'storage',vcpu:null,ram:null,od_hr:null,od_mo:18,ri_mo:null,ri_pct:null,region:'southeastasia',source:'api',note:'$0.018/GB/mo, ถูกสุด 10TB+',updated:'2026-01-15'},
+  {id:16,provider:'GCP',name:'Cloud Storage Std',cat:'storage',vcpu:null,ram:null,od_hr:null,od_mo:20,ri_mo:null,ri_pct:null,region:'asia-southeast1',source:'api',note:'$0.020/GB/mo',updated:'2026-01-15'},
+  {id:17,provider:'Oracle',name:'Object Storage',cat:'storage',vcpu:null,ram:null,od_hr:null,od_mo:25,ri_mo:null,ri_pct:null,region:'ap-singapore-1',source:'api',note:'$0.0255/GB — Retrieval FREE!',updated:'2026-01-15'},
+];
+
+const DEFAULT_BILLS=[
+  {id:1,provider:'UIH',month:'2026-01',item:'VM Cluster (6 VMs)',thb:72000,usd:2057,note:'Jan 2026'},
+  {id:2,provider:'NIPA',month:'2026-01',item:'Cloud Storage 2TB',thb:8500,usd:243,note:'Jan 2026'},
+  {id:3,provider:'PROEN',month:'2026-01',item:'VM Web Server 2x',thb:22400,usd:640,note:'Jan 2026'},
+  {id:4,provider:'UIH',month:'2025-12',item:'VM Cluster (6 VMs)',thb:72000,usd:2057,note:'Dec 2025'},
+];
+
+const DEFAULT_ALERTS=[
+  {id:1,type:'cost_spike',threshold:20,unit:'%',email:'devops@ants.co.th',active:true,triggered:true,msg:'AWS cost เพิ่มขึ้น 23% vs เดือนที่แล้ว'},
+  {id:2,type:'budget',threshold:10000,unit:'USD',email:'finops@ants.co.th',active:true,triggered:false,msg:''},
+  {id:3,type:'cpu',threshold:85,unit:'%',email:'devops@ants.co.th',active:true,triggered:true,msg:'vm-prod-03 CPU 91% มากกว่า 10 นาที'},
+  {id:4,type:'agent_down',threshold:10,unit:'min',email:'devops@ants.co.th',active:false,triggered:false,msg:''},
+];
+
+const DEFAULT_USERS=[
+  {id:1,email:'admin@ants.co.th',name:'Admin ANTS',role:'admin',last:'Just now',color:'#3b82f6'},
+  {id:2,email:'viewer@client.co.th',name:'Client Viewer',role:'viewer',last:'2 hours ago',color:'#10b981'},
+];
+
+
+// ═══════════════════════════════════════════════════
+// EXTRA DATA (from Phase 1)
+// ═══════════════════════════════════════════════════
+
+const RESELLERS = [
+  {name:'True IDC',tier:'AWS Authorized Channel Reseller (รายแรก) + Azure Cloud Region Host',clouds:['aws','azure','gcp'],type:'Authorized'},
+  {name:'SiS Distribution',tier:'AWS Distributor รายแรก (2021) — 7,000+ partners',clouds:['aws','azure'],type:'Distributor'},
+  {name:'MFEC',tier:'AWS Partner + Microsoft Partner of the Year Thailand',clouds:['aws','azure','gcp'],type:'Premier'},
+  {name:'G-Able',tier:'AWS Partner + Enterprise SI',clouds:['aws','azure'],type:'Premier'},
+  {name:'NTT DATA Thailand',tier:'Global SI ของ NTT Japan',clouds:['aws','azure','gcp'],type:'Global SI'},
+  {name:'Dailitech',tier:'AWS Consulting Partner',clouds:['aws'],type:'Consulting'},
+  {name:'Deloitte Thailand',tier:'AWS Global SI + Consulting',clouds:['aws','azure'],type:'Global SI'},
+  {name:'Fujitsu Thailand',tier:'AWS Partner + Managed Services',clouds:['aws','azure'],type:'MSP'},
+  {name:'Metro Systems',tier:'AWS Partner + Thailand SI',clouds:['aws'],type:'SI'},
+  {name:'SoftwareOne',tier:'AWS + Azure + GCP Global Reseller',clouds:['aws','azure','gcp'],type:'Global'},
+  {name:'VST ECS Thailand',tier:'Microsoft Official Distributor 30+ ปี',clouds:['azure'],type:'Distributor'},
+  {name:'Fusion Solution',tier:'Microsoft Solution Partner — SME focus',clouds:['azure'],type:'Reseller'},
+  {name:'Cloud Ace Thailand',tier:'Google Cloud Premier Partner (GCP specialist)',clouds:['gcp'],type:'Premier'},
+  {name:'Cloud HM (UIH)',tier:'AWS Authorized + Azure CSP + GCP Partner',clouds:['aws','azure','gcp'],type:'Authorized'},
+  {name:'Com7 / BaNANA IT',tier:'AWS Partner — SME & Consumer',clouds:['aws'],type:'Reseller'},
+  {name:'Yip in Tsoi & Co.',tier:'AWS Partner + Enterprise IT',clouds:['aws'],type:'Consulting'},
+  {name:'PROEN Corp',tier:'Multi-Cloud ISP + IDC Partner',clouds:['aws','azure','gcp'],type:'ISP'},
+];
+const MQ_QUESTIONS = [
+  {q:'ข้อมูลต้อง comply PDPA / กฎหมายไทย 100%', dir:1, w:3, hint:'ต้องเก็บในไทย → UIH เหมาะกว่า'},
+  {q:'ต้องการ support ภาษาไทย 24/7', dir:1, w:2, hint:'UIH มี dedicated TH account manager'},
+  {q:'องค์กรไม่มี cloud engineer / DevOps team', dir:1, w:3, hint:'UIH managed service ประหยัดค่า staff'},
+  {q:'Workload ต้องการ latency <5ms กับ on-premise', dir:1, w:2, hint:'UIH DC ในไทย เชื่อมต่อเร็วกว่า'},
+  {q:'มี VM มากกว่า 20 เครื่องขึ้นไป', dir:-1, w:3, hint:'Scale ใหญ่ = Public Cloud discount มากกว่า'},
+  {q:'Workload ต้องการ auto-scale ตาม traffic', dir:-1, w:3, hint:'UIH ไม่มี auto-scale'},
+  {q:'ต้องการ managed services (DB, K8s, AI/ML)', dir:-1, w:2, hint:'UIH ไม่มี managed services เหล่านี้'},
+  {q:'CPU utilization เฉลี่ยต่ำกว่า 30%', dir:-1, w:2, hint:'Over-provision — ควร rightsize หรือ auto-scale'},
+  {q:'ต้องการ global deployment นอกประเทศ', dir:-1, w:3, hint:'UIH มีแค่ไทย'},
+  {q:'ลด cloud cost เป็น priority หลัก', dir:-1, w:2, hint:'Public Cloud มี discount model มากกว่า'},
+  {q:'Workload เป็น container / microservices', dir:-1, w:2, hint:'K8s, ECS บน Public Cloud เหมาะกว่า'},
+  {q:'ต้องการ BI / Big Data / Analytics', dir:-1, w:2, hint:'BigQuery, Redshift ไม่มีบน UIH'},
+];
+const DB = {
+  compute: [
+    {p:'AWS',i:'m5.xlarge',vcpu:4,ram:16,od_hr:.192,od_mo:140,ri_mo:89,ri_pct:36,spot_pct:90,arch:'x86',note:'Intel Xeon, EBS-only'},
+    {p:'AWS',i:'m6g.xlarge (Arm)',vcpu:4,ram:16,od_hr:.154,od_mo:112,ri_mo:71,ri_pct:37,spot_pct:90,arch:'arm',note:'Graviton3 — 20% ถูกกว่า x86'},
+    {p:'Azure',i:'D4s v5',vcpu:4,ram:16,od_hr:.192,od_mo:140,ri_mo:84,ri_pct:40,spot_pct:90,arch:'x86',note:'Intel Xeon, Premium SSD'},
+    {p:'Azure',i:'D4ps v5 (Arm)',vcpu:4,ram:16,od_hr:.067,od_mo:49,ri_mo:29,ri_pct:40,spot_pct:90,arch:'arm',note:'🏆 Ampere Altra — 65% ถูกกว่า x86!'},
+    {p:'GCP',i:'n2-standard-4',vcpu:4,ram:16,od_hr:.190,od_mo:138,ri_mo:79,ri_pct:43,spot_pct:80,arch:'x86',note:'Intel Cascade Lake, SUD included'},
+    {p:'GCP',i:'t2a-standard-4 (Arm)',vcpu:4,ram:16,od_hr:.152,od_mo:111,ri_mo:64,ri_pct:43,spot_pct:80,arch:'arm',note:'Ampere Altra Arm'},
+    {p:'Oracle',i:'VM.Standard3.Flex',vcpu:4,ram:16,od_hr:.127,od_mo:93,ri_mo:65,ri_pct:30,spot_pct:0,arch:'x86',note:'Intel Xeon, ถูกสุดใน x86'},
+    {p:'Oracle',i:'VM.Standard.A1 (Arm)',vcpu:4,ram:24,od_hr:0,od_mo:0,ri_mo:0,ri_pct:100,spot_pct:0,arch:'arm',note:'🏆 Always Free! 4 OCPU+24GB'},
+    {p:'DigitalOcean',i:'General Purpose 4vCPU',vcpu:4,ram:8,od_hr:null,od_mo:63,ri_mo:null,ri_pct:null,spot_pct:0,arch:'x86',note:'Fixed pricing, SSD'},
+  ],
+  storage: [
+    {p:'AWS',s:'S3 Standard',pgb:.023,tb1:23,tb10:230,tb100:2099,ret:'$0.0004/1k GET',tier:'standard'},
+    {p:'AWS',s:'S3 Intelligent-Tiering',pgb:.023,tb1:23,tb10:230,tb100:2099,ret:'Free (auto)',tier:'standard'},
+    {p:'AWS',s:'S3 Glacier Instant',pgb:.004,tb1:4,tb10:40,tb100:400,ret:'$0.01/GB',tier:'archive'},
+    {p:'Azure',s:'Blob Hot',pgb:.018,tb1:18,tb10:180,tb100:1640,ret:'$0.004/10k',tier:'standard'},
+    {p:'Azure',s:'Blob Cool',pgb:.010,tb1:10,tb10:100,tb100:910,ret:'$0.01/GB',tier:'cold'},
+    {p:'Azure',s:'Blob Archive',pgb:.00099,tb1:1,tb10:10,tb100:99,ret:'$0.022/GB',tier:'archive'},
+    {p:'GCP',s:'Cloud Storage Standard',pgb:.020,tb1:20,tb10:200,tb100:1822,ret:'$0.004/10k',tier:'standard'},
+    {p:'GCP',s:'Cloud Storage Nearline',pgb:.010,tb1:10,tb10:100,tb100:910,ret:'$0.01/GB',tier:'cold'},
+    {p:'Oracle',s:'Object Storage Standard',pgb:.0255,tb1:26,tb10:255,tb100:2322,ret:'FREE!',tier:'standard'},
+    {p:'Oracle',s:'Object Storage Archive',pgb:.0026,tb1:3,tb10:27,tb100:268,ret:'$0.0026/GB',tier:'archive'},
+    {p:'DigitalOcean',s:'Spaces',pgb:.02,tb1:5,tb10:25,tb100:205,ret:'Free (CDN)',tier:'standard'},
+  ],
+  network: [
+    {p:'AWS',   first10:.090, next40:.085, over50:.070, inter:.015, free_gb:0.1,   egress50: 10*.09+40*.085},
+    {p:'Azure', first10:.087, next40:.083, over50:.070, inter:.03,  free_gb:0.1,   egress50: 10*.087+40*.083},
+    {p:'GCP',   first10:.080, next40:.060, over50:.040, inter:.01,  free_gb:0.001, egress50: 10*.08+40*.06},
+    {p:'Oracle',first10:.0085,next40:.0085,over50:.0085,inter:0,    free_gb:10,    egress50: 40*.0085},
+    {p:'DigitalOcean',first10:.01,next40:.01,over50:.01,inter:0,    free_gb:999,   egress50: 0.4},
+  ],
+  discounts: [
+    {p:'AWS',   od:100,yr1:60,yr3:40,spot:10,auto:100,arm:80, yr1pct:40, yr3pct:60},
+    {p:'Azure', od:100,yr1:60,yr3:45,spot:10,auto:95, arm:35, yr1pct:40, yr3pct:55},
+    {p:'GCP',   od:100,yr1:43,yr3:43,spot:20,auto:70, arm:80, yr1pct:57, yr3pct:57},
+    {p:'Oracle',od:70, yr1:49,yr3:45,spot:70,auto:70, arm:0,  yr1pct:30, yr3pct:35},
+    {p:'DigitalOcean',od:63,yr1:63,yr3:63,spot:63,auto:63,arm:63,yr1pct:0, yr3pct:0},
+  ],
+  finopsTactics: [
+    {t:'Reserved/CUD 1-yr', save:'ลด 36–57%', pct:46, diff:'⭐⭐', use:'Steady workload', aws:'✅ 40%',azure:'✅ 40%',gcp:'✅ 57% 🏆',ora:'✅ 30%',pri:'HIGH'},
+    {t:'Reserved/CUD 3-yr', save:'ลด 55–70%', pct:62, diff:'⭐⭐⭐',use:'Workload ระยะยาว', aws:'✅ 60%',azure:'✅ 55%',gcp:'✅ 70% 🏆',ora:'✅ 35%',pri:'HIGH'},
+    {t:'Spot/Preemptible',  save:'ลด 60–90%', pct:75, diff:'⭐⭐⭐⭐',use:'Batch, ML, stateless', aws:'✅ 90%',azure:'✅ 90%',gcp:'✅ 80%',ora:'❌',pri:'HIGH'},
+    {t:'Arm CPU',           save:'ลด 20–65%', pct:42, diff:'⭐⭐', use:'Container, API, web', aws:'✅ 20%',azure:'✅ 65% 🏆',gcp:'✅ 20%',ora:'✅ Free',pri:'HIGH'},
+    {t:'SUD (GCP auto)',    save:'Auto ~30%',  pct:30, diff:'⭐',  use:'GCP workloads', aws:'❌',azure:'❌',gcp:'✅ Auto 🏆',ora:'❌',pri:'MED'},
+    {t:'Rightsizing',       save:'ลด 20–40%', pct:30, diff:'⭐⭐', use:'Over-provisioned VMs', aws:'Compute Optimizer',azure:'Azure Advisor',gcp:'GCP Recommender',ora:'Cloud Advisor',pri:'HIGH'},
+    {t:'Idle Cleanup',      save:'ลด 15–30%', pct:22, diff:'⭐',  use:'Dev/test env', aws:'Config Rules',azure:'Azure Policy',gcp:'GCP Policy',ora:'Cloud Guard',pri:'HIGH'},
+    {t:'Region Selection',  save:'ลด 10–50%', pct:30, diff:'⭐⭐', use:'Latency-tolerant', aws:'us-east-1',azure:'eastus',gcp:'us-central1',ora:'us-ashburn-1',pri:'MED'},
+    {t:'Storage Lifecycle', save:'ลด 60–90%', pct:75, diff:'⭐',  use:'Log, backup, archive', aws:'S3 Intelligent',azure:'Blob Lifecycle',gcp:'Object Lifecycle',ora:'Archive',pri:'HIGH'},
+    {t:'Egress Optimization',save:'ลด 50–95%',pct:72, diff:'⭐⭐', use:'High traffic apps', aws:'CloudFront',azure:'Azure CDN',gcp:'Cloud CDN',ora:'10TB Free! 🏆',pri:'HIGH'},
+    {t:'Auto-Scaling',      save:'ลด 20–40%', pct:30, diff:'⭐⭐⭐',use:'Variable traffic', aws:'ASG',azure:'VMSS',gcp:'MIG',ora:'Autoscaling',pri:'MED'},
+    {t:'Oracle Always Free', save:'ฟรี 100%', pct:100,diff:'⭐',  use:'Dev/Test/MVP', aws:'❌',azure:'❌',gcp:'❌',ora:'✅ 4vCPU+24GB',pri:'HIGH'},
+    {t:'DigitalOcean Flat',  save:'Predictable',pct:0, diff:'⭐', use:'Startup/SME', aws:'❌',azure:'❌',gcp:'❌',ora:'❌',pri:'LOW'},
+    {t:'DB Rightsizing',    save:'ลด 20–50%', pct:35, diff:'⭐⭐', use:'Managed DB', aws:'RDS recommendations',azure:'SQL Advisor',gcp:'AlloyDB tips',ora:'DB console',pri:'MED'},
+    {t:'Tagging & Allocation',save:'Visibility',pct:0,diff:'⭐⭐', use:'All orgs', aws:'Cost Allocation Tags',azure:'Azure Tags',gcp:'GCP Labels',ora:'OCI Tags',pri:'MED'},
+  ],
+  uih: [
+    {spec:'2 vCPU/4GB',  thb:4500, usd:129, aws:102, az:95,  gcp:85,  ora:47,  do:42},
+    {spec:'2 vCPU/8GB',  thb:6500, usd:186, aws:127, az:115, gcp:107, ora:65,  do:56},
+    {spec:'4 vCPU/8GB',  thb:9000, usd:257, aws:146, az:130, gcp:127, ora:81,  do:63},
+    {spec:'4 vCPU/16GB', thb:12000,usd:343, aws:174, az:159, gcp:138, ora:93,  do:84},
+    {spec:'8 vCPU/16GB', thb:18000,usd:514, aws:236, az:210, gcp:209, ora:134, do:126},
+    {spec:'8 vCPU/32GB', thb:24000,usd:686, aws:304, az:269, gcp:256, ora:176, do:168},
+    {spec:'16 vCPU/32GB',thb:38000,usd:1086,aws:472, az:430, gcp:418, ora:290, do:252},
+    {spec:'16 vCPU/64GB',thb:50000,usd:1429,aws:601, az:558, gcp:510, ora:358, do:336},
+  ],
+  regions: [
+    {name:'Mumbai',code:'ap-south-1',zone:'APAC',mult:.771,ri:89*.771},
+    {name:'N. Virginia',code:'us-east-1',zone:'US',mult:1.000,ri:89},
+    {name:'Oregon',code:'us-west-2',zone:'US',mult:1.000,ri:89},
+    {name:'Bangkok',code:'ap-southeast-7',zone:'APAC',mult:.907,ri:89*.907},
+    {name:'Stockholm',code:'eu-north-1',zone:'EU',mult:1.057,ri:89*1.057},
+    {name:'Ireland',code:'eu-west-1',zone:'EU',mult:1.100,ri:89*1.1},
+    {name:'Singapore',code:'ap-southeast-1',zone:'APAC',mult:1.207,ri:89*1.207},
+    {name:'Tokyo',code:'ap-northeast-1',zone:'APAC',mult:1.236,ri:89*1.236},
+    {name:'Sydney',code:'ap-southeast-2',zone:'APAC',mult:1.236,ri:89*1.236},
+    {name:'Hong Kong',code:'ap-east-1',zone:'APAC',mult:1.329,ri:89*1.329},
+    {name:'Sao Paulo',code:'sa-east-1',zone:'Other',mult:1.393,ri:89*1.393},
+  ],
+  thaiProviders: [
+    {name:'UIH / Cloud HM',type:'ISP+IDC',tier:'Tier III',dc:['BCH4 BKK','TCCT Bangna'],aws:true,azure:true,gcp:true,pdpa:true,icon:'🏢',desc:'Enterprise Cloud บน Nutanix HCI มี dark fiber ring ของตัวเอง'},
+    {name:'NT Cloud',type:'รัฐวิสาหกิจ',tier:'Tier III',dc:['13 แห่งทั่วไทย'],aws:true,azure:true,gcp:false,pdpa:true,icon:'🏛️',desc:'CAT+TOT ควบรวม เหมาะหน่วยงานรัฐ ครอบคลุมทั่วประเทศ'},
+    {name:'True IDC',type:'Telecom/CP Group',tier:'Tier III+',dc:['BKK','Chonburi'],aws:true,azure:true,gcp:true,pdpa:true,icon:'📡',desc:'AWS Authorized Reseller รายแรก + Microsoft Azure Cloud Region Host'},
+    {name:'PROEN Cloud',type:'ISP+IDC',tier:'Tier III',dc:['BKK'],aws:true,azure:true,gcp:true,pdpa:true,icon:'🌐',desc:'Multi-Cloud Interconnect เชื่อมต่อ Public Cloud โดยตรง'},
+    {name:'NIPA Cloud',type:'Local Cloud',tier:'Tier III',dc:['BKK'],aws:false,azure:false,gcp:false,pdpa:true,icon:'☁️',desc:'Sovereign Cloud 100% ไทย PDPA-ready เน้น SME'},
+    {name:'INET Cloud',type:'ISP ไทย',tier:'Tier III',dc:['BKK'],aws:true,azure:true,gcp:false,pdpa:true,icon:'🔌',desc:'ISP รายแรกๆ ของไทย ราคาเข้าถึงได้'},
+    {name:'Z.com / ReadyIDC',type:'IDC',tier:'Tier III',dc:['BKK'],aws:false,azure:false,gcp:false,pdpa:false,icon:'🗄️',desc:'VPS ราคาถูก Japanese tech (GMO Internet)'},
+  ],
+};
+
+const UIH_COMPARE=[
+  {spec:'2 vCPU/4GB',thb:4500,usd:129,aws:102,az:95,gcp:85,ora:47,do:42},
+  {spec:'4 vCPU/16GB',thb:12000,usd:343,aws:174,az:159,gcp:138,ora:93,do:84},
+  {spec:'8 vCPU/32GB',thb:24000,usd:686,aws:304,az:269,gcp:256,ora:176,do:168},
+  {spec:'16 vCPU/64GB',thb:50000,usd:1429,aws:601,az:558,gcp:510,ora:358,do:336},
+];
+
+const REGIONS=[
+  {name:'Mumbai (ถูกสุด APAC)',code:'ap-south-1',zone:'APAC',mult:.771,note:'ถูกกว่า Singapore 40%'},
+  {name:'N.Virginia (Base)',code:'us-east-1',zone:'US',mult:1.000,note:'Reference price'},
+  {name:'Oregon',code:'us-west-2',zone:'US',mult:1.000,note:'เท่า US-East'},
+  {name:'Bangkok 🇹🇭',code:'ap-southeast-7',zone:'APAC',mult:.907,note:'Launch Jan 2025'},
+  {name:'Ireland',code:'eu-west-1',zone:'EU',mult:1.100,note:'EU ถูกสุด'},
+  {name:'Stockholm',code:'eu-north-1',zone:'EU',mult:1.057,note:'EU ถูกรองลงมา'},
+  {name:'London',code:'eu-west-2',zone:'EU',mult:1.143,note:''},
+  {name:'Frankfurt',code:'eu-central-1',zone:'EU',mult:1.150,note:''},
+  {name:'Singapore',code:'ap-southeast-1',zone:'APAC',mult:1.207,note:'Hub APAC'},
+  {name:'Tokyo',code:'ap-northeast-1',zone:'APAC',mult:1.236,note:'Japan'},
+  {name:'Sydney',code:'ap-southeast-2',zone:'APAC',mult:1.236,note:'Australia'},
+  {name:'Hong Kong',code:'ap-east-1',zone:'APAC',mult:1.329,note:''},
+  {name:'Sao Paulo (แพงสุด)',code:'sa-east-1',zone:'Other',mult:1.393,note:'ภาษีนำเข้า 35%+'},
+];
+
+const FINOPS_TACTICS=[
+  {t:'Reserved/CUD 1-yr',save:'ลด 36–57%',pct:46,diff:'⭐⭐',aws:'✅ 40%',azure:'✅ 40%',gcp:'✅ 57% 🏆',ora:'✅ 30%',pri:'HIGH'},
+  {t:'Spot/Preemptible',save:'ลด 60–90%',pct:75,diff:'⭐⭐⭐⭐',aws:'✅ 90%',azure:'✅ 90%',gcp:'✅ 80%',ora:'❌',pri:'HIGH'},
+  {t:'Arm CPU',save:'ลด 20–65%',pct:42,diff:'⭐⭐',aws:'✅ 20%',azure:'✅ 65% 🏆',gcp:'✅ 20%',ora:'✅ Free',pri:'HIGH'},
+  {t:'GCP SUD Auto',save:'Auto ~30%',pct:30,diff:'⭐',aws:'❌',azure:'❌',gcp:'✅ Auto 🏆',ora:'❌',pri:'MED'},
+  {t:'Rightsizing',save:'ลด 20–40%',pct:30,diff:'⭐⭐',aws:'Compute Optimizer',azure:'Azure Advisor',gcp:'GCP Recommender',ora:'Cloud Advisor',pri:'HIGH'},
+  {t:'Idle Resource Cleanup',save:'ลด 15–30%',pct:22,diff:'⭐',aws:'Config Rules',azure:'Azure Policy',gcp:'GCP Policy',ora:'Cloud Guard',pri:'HIGH'},
+  {t:'Storage Lifecycle',save:'ลด 60–90%',pct:75,diff:'⭐',aws:'S3 Intelligent',azure:'Blob Lifecycle',gcp:'Object Lifecycle',ora:'Archive',pri:'HIGH'},
+  {t:'Egress Optimization',save:'ลด 50–95%',pct:72,diff:'⭐⭐',aws:'CloudFront',azure:'Azure CDN',gcp:'Cloud CDN',ora:'10TB Free! 🏆',pri:'HIGH'},
+  {t:'Region Selection',save:'ลด 10–50%',pct:30,diff:'⭐⭐',aws:'us-east-1',azure:'eastus',gcp:'us-central1',ora:'us-ashburn-1',pri:'MED'},
+  {t:'Oracle Always Free',save:'ฟรี 100%',pct:100,diff:'⭐',aws:'❌',azure:'❌',gcp:'❌',ora:'✅ 4vCPU+24GB',pri:'HIGH'},
+  {t:'Auto-Scaling',save:'ลด 20–40%',pct:30,diff:'⭐⭐⭐',aws:'ASG',azure:'VMSS',gcp:'MIG',ora:'Autoscaling',pri:'MED'},
+];
+</script>
+
+<!-- ══════════════════════════════════════════
+     LOGIN PAGE
+══════════════════════════════════════════ -->
+
+<!-- ══ LOGIN PAGE ══ -->
+<div id="login-page" style="display:flex">
+  <div class="login-card">
+    <div class="lc-logo">
+      <div class="lc-icon">⚡</div>
+      <div class="lc-name">CloudLens</div>
+    </div>
+    <div class="lc-tag">Cloud Intelligence & FinOps Platform v2.0</div>
+
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="l-email" placeholder="admin@ants.co.th"
+        onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="l-pass" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="l-err" class="login-err"></div>
+    <button class="login-submit" id="l-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+
+    <div class="login-divider">หรือ</div>
+    <button class="demo-btn" onclick="doDemo()">⚡ ทดลองใช้ Demo — เข้าได้เลย ไม่ต้อง account</button>
+
+    <div class="login-footer">
+      CloudLens by ANTS · Q1 2026 · v2.0
+    </div>
+  </div>
+</div>
+
+<div id="app-page" style="display:none;flex-direction:column;height:100vh;overflow:hidden;">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-logo">
+      <div class="tb-logo-icon">⚡</div>
+      CloudLens
+      <span class="tb-badge">v2.0</span>
+    </div>
+    <nav class="tb-nav">
+      <button class="tb-btn on" onclick="navTo('dashboard',this)">📊 Dashboard</button>
+      <button class="tb-btn" onclick="navTo('pricing',this)">💰 Pricing</button>
+      <button class="tb-btn" onclick="navTo('bills',this)">🧾 Bills</button>
+      <button class="tb-btn" onclick="navTo('monitor',this)">📡 Monitor</button>
+      <button class="tb-btn" onclick="navTo('finops',this)">🎯 FinOps</button>
+      <button class="tb-btn" id="tb-admin" onclick="navTo('admin',this)" style="display:none">🔧 Admin</button>
+    </nav>
+    <div class="tb-right">
+      <div class="tb-live"><div class="tb-live-dot"></div><span id="tb-live-txt">Live</span></div>
+      <div class="user-pill">
+        <div class="u-avatar" id="u-av">A</div>
+        <span id="u-name">admin</span>
+        <span class="role-pill rp-admin" id="u-role">ADMIN</span>
+      </div>
+      <button class="tb-logout" onclick="doLogout()">ออก</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sb-grp">Overview</div>
+      <button class="sb-btn on" onclick="go('p-dash',this)"><span class="sb-ic">📊</span>Dashboard</button>
+      <button class="sb-btn" onclick="go('p-alerts',this)"><span class="sb-ic">🔔</span>Alerts<span class="sb-tag st-red" id="alert-cnt">0</span></button>
+
+      <div class="sb-grp">Pricing Engine</div>
+      <button class="sb-btn" onclick="go('p-pricing',this)"><span class="sb-ic">💰</span>Live Pricing<span class="sb-tag st-green">LIVE</span></button>
+      <button class="sb-btn" onclick="go('p-compare',this)"><span class="sb-ic">⚡</span>Quick Compare</button>
+      <button class="sb-btn" onclick="go('p-regional',this)"><span class="sb-ic">🗺️</span>Regional</button>
+
+      <div class="sb-grp">Cloud Bills</div>
+      <button class="sb-btn" onclick="go('p-bills-aws',this)"><span class="sb-ic">🟠</span>AWS Bills</button>
+      <button class="sb-btn" onclick="go('p-bills-azure',this)"><span class="sb-ic">🔵</span>Azure Bills</button>
+      <button class="sb-btn" onclick="go('p-bills-gcp',this)"><span class="sb-ic">🟢</span>GCP Bills</button>
+      <button class="sb-btn" onclick="go('p-bills-local',this)"><span class="sb-ic">🇹🇭</span>Local Cloud Bills</button>
+
+      <div class="sb-grp">Monitoring</div>
+      <button class="sb-btn" onclick="go('p-metrics',this)"><span class="sb-ic">📡</span>Infrastructure<span class="sb-tag st-blue">RT</span></button>
+      <button class="sb-btn" onclick="go('p-logs',this)"><span class="sb-ic">📋</span>Logs</button>
+      <button class="sb-btn" onclick="go('p-apm',this)"><span class="sb-ic">⚡</span>APM</button>
+
+      <div class="sb-grp">FinOps</div>
+      <button class="sb-btn" onclick="go('p-finops',this)"><span class="sb-ic">📖</span>FinOps Guide</button>
+      <button class="sb-btn" onclick="go('p-calc',this)"><span class="sb-ic">🧮</span>Savings Calc</button>
+      <button class="sb-btn" onclick="go('p-uih',this)"><span class="sb-ic">🏢</span>UIH Analysis</button>
+      <button class="sb-btn" onclick="go('p-optimizer',this)"><span class="sb-ic">🎯</span>Optimizer</button>
+
+
+      <div class="sb-grp">Pricing Detail</div>
+      <button class="sb-btn" onclick="go('p-pricing',this)"><span class="sb-ic">💻</span>Compute (VM)</button>
+      <button class="sb-btn" onclick="go('p-storage',this)"><span class="sb-ic">💾</span>Storage</button>
+      <button class="sb-btn" onclick="go('p-network',this)"><span class="sb-ic">🌐</span>Network & Egress</button>
+      <button class="sb-btn" onclick="go('p-discount',this)"><span class="sb-ic">🏷️</span>Discount Models</button>
+
+      <div class="sb-grp">Thailand Deep</div>
+      <button class="sb-btn" onclick="go('p-tco',this)"><span class="sb-ic">⚖️</span>TCO Calculator</button>
+      <button class="sb-btn" onclick="go('p-migrate',this)"><span class="sb-ic">🚀</span>Migration Scoring</button>
+      <button class="sb-btn" onclick="go('p-thai',this)"><span class="sb-ic">🇹🇭</span>Thai Providers</button>
+      <button class="sb-btn" onclick="go('p-resellers',this)"><span class="sb-ic">🤝</span>Resellers & Partners</button>
+
+      <div class="sb-grp">Tools</div>
+      <button class="sb-btn" onclick="go('p-upload',this)"><span class="sb-ic">📂</span>Upload & Analyze<span class="sb-tag st-blue">AI</span></button>
+      <button class="sb-btn" onclick="go('p-datadog',this)"><span class="sb-ic">🐶</span>Datadog Config Gen</button>
+      <div class="sb-grp" id="sb-admin-grp" style="display:none">Admin</div>
+      <button class="sb-btn" id="sb-manage" onclick="go('p-manage',this)" style="display:none"><span class="sb-ic">🔧</span>Manage Pricing</button>
+      <button class="sb-btn" id="sb-users" onclick="go('p-users',this)" style="display:none"><span class="sb-ic">👥</span>Users</button>
+      <button class="sb-btn" id="sb-keys" onclick="go('p-keys',this)" style="display:none"><span class="sb-ic">🔑</span>API Keys</button>
+      <button class="sb-btn" id="sb-arules" onclick="go('p-arules',this)" style="display:none"><span class="sb-ic">🔔</span>Alert Rules</button>
+    </nav>
+
+    <!-- Content area -->
+    <div class="content" id="content">
+
+<!-- ════ PAGE: DASHBOARD ════ -->
+<div class="page on" id="p-dash">
+  <div class="pg-title">Dashboard</div>
+  <div class="pg-sub">ภาพรวม Cloud Cost & Infrastructure — Q1 2026</div>
+  <div class="g5" id="dash-kpis" style="margin-bottom:1.25rem"></div>
+  <div class="g2" style="gap:1rem;margin-bottom:1.25rem">
+    <div class="card">
+      <div class="card-t">📊 Cloud Spend This Month</div>
+      <div style="height:200px"><canvas id="c-spend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t">💡 Top Savings Opportunities</div>
+      <div id="dash-savings"></div>
+    </div>
+  </div>
+  <div class="g3" style="gap:1rem">
+    <div class="card">
+      <div class="card-t">🔴 Active Alerts</div>
+      <div id="dash-alerts"></div>
+    </div>
+    <div class="card">
+      <div class="card-t">⚡ Pricing Engine Status</div>
+      <div id="dash-pe"></div>
+    </div>
+    <div class="card">
+      <div class="card-t">📡 Infrastructure Health</div>
+      <div id="dash-infra"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: LIVE PRICING ════ -->
+<div class="page" id="p-pricing">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem">
+    <div>
+      <div class="pg-title">Live Pricing Engine</div>
+      <div class="pg-sub" style="margin-bottom:0">ราคา real-time จาก Supabase — Auto-sync Global Cloud ทุกวัน</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <span id="last-sync" style="font-size:11px;color:var(--tx3);font-family:var(--mono)"></span>
+      <button class="btn btn-grn btn-sm" onclick="syncPricing()">🔄 Sync Now</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportPricingCSV()">⬇ CSV</button>
+    </div>
+  </div>
+  <div class="fbar">
+    <input class="s-input" id="ps-q" placeholder="🔍 ค้นหา..." oninput="renderPricing()">
+    <button class="fc on" onclick="setPF('all',this)">All</button>
+    <button class="fc" onclick="setPF('AWS',this)">AWS</button>
+    <button class="fc" onclick="setPF('Azure',this)">Azure</button>
+    <button class="fc" onclick="setPF('GCP',this)">GCP</button>
+    <button class="fc" onclick="setPF('Oracle',this)">Oracle</button>
+    <button class="fc" onclick="setPF('DigitalOcean',this)">DO</button>
+    <button class="fc" onclick="setPF('UIH',this)">UIH</button>
+    <button class="fc" onclick="setPF('NIPA',this)">NIPA</button>
+    <button class="fc" onclick="setPF('PROEN',this)">PROEN</button>
+    <button class="fc" onclick="setPF('NT',this)">NT</button>
+    <button class="fc" onclick="setPF('compute',this)" style="margin-left:.5rem">Compute</button>
+    <button class="fc" onclick="setPF('storage',this)">Storage</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Provider</th><th>Name</th><th>vCPU</th><th>RAM</th>
+        <th>OD/hr</th><th>OD/mo</th><th>RI/mo</th><th>Saving</th>
+        <th>THB/mo</th><th>Source</th><th>Updated</th>
+        <th id="th-actions" style="display:none">Actions</th>
+      </tr></thead>
+      <tbody id="pricing-tbody"></tbody>
+    </table>
+  </div>
+  <div style="height:220px;margin-top:1.25rem"><canvas id="c-pricing-bar"></canvas></div>
+</div>
+
+<!-- ════ PAGE: QUICK COMPARE ════ -->
+<div class="page" id="p-compare">
+  <div class="pg-title">Quick Compare</div>
+  <div class="pg-sub">เปรียบเทียบ Cloud จาก Live Pricing Engine แบบ real-time</div>
+  <div class="card" style="margin-bottom:1.25rem">
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="margin:0;min-width:100px"><label class="lbl">vCPU</label>
+        <select id="qv" onchange="renderCompare()"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option><option value="16">16</option></select>
+      </div>
+      <div class="field" style="margin:0;min-width:100px"><label class="lbl">RAM (GB)</label>
+        <select id="qr" onchange="renderCompare()"><option value="4">4</option><option value="8">8</option><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option></select>
+      </div>
+      <div class="field" style="margin:0;min-width:140px"><label class="lbl">Pricing</label>
+        <select id="qm" onchange="renderCompare()"><option value="od">On-Demand</option><option value="ri">1-yr Reserved</option></select>
+      </div>
+      <div class="field" style="margin:0;min-width:160px"><label class="lbl">Region</label>
+        <select id="qreg" onchange="renderCompare()">
+          <option value=".907">Bangkok</option><option value="1">US-East</option>
+          <option value="1.207">Singapore</option><option value=".771">Mumbai (cheapest)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.85rem;margin-bottom:1.25rem" id="compare-cards"></div>
+  <div style="height:250px"><canvas id="c-compare"></canvas></div>
+</div>
+
+<!-- ════ PAGE: REGIONAL ════ -->
+<div class="page" id="p-regional">
+  <div class="pg-title">🗺️ Regional Pricing</div>
+  <div class="pg-sub">เปรียบเทียบราคาตาม Region — Base: AWS m5.xlarge (4vCPU/16GB Linux)</div>
+  <div class="info info-blue" style="margin-bottom:1rem"><span>💡</span>
+    <div><strong>หลักการสำคัญ:</strong> Reserved Discount % คงที่ทุก Region — Bangkok ถูกกว่า Singapore ~21% | Mumbai ถูกสุดใน APAC | Sao Paulo แพงสุดในโลก +39%</div>
+  </div>
+  <div class="g2" style="gap:1rem;margin-bottom:1.25rem">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Region</th><th>Code</th><th>Zone</th><th>OD/mo</th><th>1-yr RI/mo</th><th>vs US-East</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="regional-tbody"></tbody>
+      </table>
+    </div>
+    <div class="card"><div class="card-t">📊 Regional Price Index</div><div style="height:320px"><canvas id="c-regional"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="card-t">🔄 Provider Reserved Comparison — 4vCPU/16GB, 1-yr (Bangkok vs Global)</div>
+    <div class="tbl-wrap" style="margin-top:.75rem">
+      <table>
+        <thead><tr><th>Provider</th><th>Program</th><th>US-East</th><th>EU-West</th><th>Singapore</th><th>Bangkok 🇹🇭</th><th>ย้าย Region?</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="provider-regional-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- ════<!-- ════ PAGE: AWS BILLS ════ -->
+<div class="page" id="p-bills-aws">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div><div class="pg-title">🟠 AWS Cost Explorer</div><div class="pg-sub" style="margin:0">ค่าใช้จ่าย AWS — ดึงจาก Cost Explorer API</div></div>
+    <button class="btn btn-grn btn-sm" onclick="loadAWSBills()">🔄 Refresh</button>
+  </div>
+  <div class="g4" id="aws-kpis" style="margin-bottom:1.25rem"></div>
+  <div class="g2" style="gap:1rem;margin-bottom:1.25rem">
+    <div class="card"><div class="card-t">📊 Cost by Service</div><div style="height:210px"><canvas id="c-aws-pie"></canvas></div></div>
+    <div class="card"><div class="card-t">📈 Monthly Trend</div><div style="height:210px"><canvas id="c-aws-trend"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-t">📋 Service Breakdown</div><div id="aws-rows"></div></div>
+</div>
+
+<!-- ════ PAGE: AZURE BILLS ════ -->
+<div class="page" id="p-bills-azure">
+  <div class="pg-title">🔵 Azure Cost Management</div>
+  <div class="pg-sub">ดึงจาก Azure Cost Management API</div>
+  <div class="info info-amber"><span>⚠️</span>ใส่ Azure credentials ใน Admin → API Keys ก่อน จึงจะดึงข้อมูล live ได้</div>
+  <div class="g4" id="azure-kpis" style="margin-bottom:1.25rem"></div>
+  <div style="height:230px"><canvas id="c-azure-trend"></canvas></div>
+</div>
+
+<!-- ════ PAGE: GCP BILLS ════ -->
+<div class="page" id="p-bills-gcp">
+  <div class="pg-title">🟢 GCP Billing</div>
+  <div class="pg-sub">ดึงจาก GCP Billing API</div>
+  <div class="info info-amber"><span>⚠️</span>ใส่ GCP Service Account ใน Admin → API Keys ก่อน</div>
+  <div class="g4" id="gcp-kpis" style="margin-bottom:1.25rem"></div>
+  <div style="height:230px"><canvas id="c-gcp-trend"></canvas></div>
+</div>
+
+<!-- ════ PAGE: LOCAL BILLS ════ -->
+<div class="page" id="p-bills-local">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+    <div><div class="pg-title">🇹🇭 Local Cloud Bills</div><div class="pg-sub" style="margin:0">UIH / NIPA / PROEN / NT — กรอกเองหรือ Import CSV</div></div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-pri btn-sm" onclick="openModal('m-bill')">+ กรอก Invoice</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('bill-upload').click()">📂 Import CSV</button>
+      <input type="file" id="bill-upload" accept=".csv" style="display:none" onchange="importBillCSV(this.files[0])">
+    </div>
+  </div>
+  <div class="g4" id="local-kpis" style="margin-bottom:1.25rem"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Provider</th><th>เดือน</th><th>รายการ</th><th>บาท</th><th>USD</th><th>หมายเหตุ</th><th>Actions</th></tr></thead>
+      <tbody id="local-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════ PAGE: METRICS ════ -->
+<div class="page" id="p-metrics">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+    <div><div class="pg-title">📡 Infrastructure Metrics</div><div class="pg-sub" style="margin:0">Real-time ผ่าน Datadog API — refresh ทุก 30 วินาที</div></div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <span id="metrics-ts" style="font-size:11px;color:var(--tx3);font-family:var(--mono)"></span>
+      <button class="btn btn-grn btn-sm" onclick="loadMetrics()">🔄 Refresh</button>
+    </div>
+  </div>
+  <div class="fbar">
+    <button class="fc on" onclick="setMF('all',this)">All Hosts</button>
+    <button class="fc" onclick="setMF('aws',this)">AWS</button>
+    <button class="fc" onclick="setMF('azure',this)">Azure</button>
+    <button class="fc" onclick="setMF('gcp',this)">GCP</button>
+    <button class="fc" onclick="setMF('uih',this)">UIH/Local</button>
+  </div>
+  <div id="metrics-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:.75rem;margin-bottom:1.25rem"></div>
+  <div class="g2" style="gap:1rem">
+    <div class="card"><div class="card-t">📊 CPU Trend</div><div style="height:190px"><canvas id="c-cpu"></canvas></div></div>
+    <div class="card"><div class="card-t">💾 Memory Trend</div><div style="height:190px"><canvas id="c-mem"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ════ PAGE: LOGS ════ -->
+<div class="page" id="p-logs">
+  <div class="pg-title">📋 Log Management</div>
+  <div class="pg-sub">ดึง Logs จาก Datadog Logs API</div>
+  <div class="fbar">
+    <input class="s-input" id="log-q" placeholder="🔍 ค้นหา log..." style="min-width:280px">
+    <select id="log-lvl" style="font-size:12px"><option value="">All Levels</option><option value="error">ERROR</option><option value="warn">WARN</option><option value="info">INFO</option><option value="debug">DEBUG</option></select>
+    <button class="btn btn-grn btn-sm" onclick="loadLogs()">Search</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div id="log-stream" style="padding:.75rem;max-height:480px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- ════ PAGE: APM ════ -->
+<div class="page" id="p-apm">
+  <div class="pg-title">⚡ APM — Application Performance</div>
+  <div class="pg-sub">Latency / Error Rate / Throughput จาก Datadog APM API</div>
+  <div class="g4" id="apm-kpis" style="margin-bottom:1.25rem"></div>
+  <div class="g2" style="gap:1rem">
+    <div class="card"><div class="card-t">📊 P99 Latency by Service</div><div style="height:210px"><canvas id="c-latency"></canvas></div></div>
+    <div class="card"><div class="card-t">❌ Error Rate by Service</div><div style="height:210px"><canvas id="c-errors"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ════ PAGE: FINOPS GUIDE ════ -->
+<div class="page" id="p-finops">
+  <div class="pg-title">📖 FinOps Guide</div>
+  <div class="pg-sub">11 tactics ประหยัด Cloud — เรียงตาม Impact</div>
+  <div class="fbar">
+    <button class="fc on" onclick="setFF('all',this)">All</button>
+    <button class="fc" onclick="setFF('HIGH',this)">🔴 HIGH</button>
+    <button class="fc" onclick="setFF('MED',this)">🟡 MED</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Tactic</th><th>ประหยัด</th><th>ความยาก</th><th>AWS</th><th>Azure</th><th>GCP</th><th>Oracle</th><th>Priority</th></tr></thead>
+      <tbody id="finops-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════ PAGE: SAVINGS CALCULATOR ════ -->
+<div class="page" id="p-calc">
+  <div class="pg-title">🧮 Savings Calculator</div>
+  <div class="pg-sub">คำนวณจาก Live Pricing — ไม่ใช่ static data</div>
+  <div class="g2" style="gap:1rem">
+    <div>
+      <div class="sh">INPUT — ค่าใช้จ่าย/เดือน (USD)</div>
+      <div class="field"><label class="lbl">Compute (VM/EC2)</label><input type="number" id="fc-c" value="5000" oninput="calcSavings()"></div>
+      <div class="field"><label class="lbl">Storage</label><input type="number" id="fc-s" value="800" oninput="calcSavings()"></div>
+      <div class="field"><label class="lbl">Network Egress</label><input type="number" id="fc-e" value="1200" oninput="calcSavings()"></div>
+      <div class="field"><label class="lbl">Managed Database</label><input type="number" id="fc-d" value="1500" oninput="calcSavings()"></div>
+      <div class="field"><label class="lbl">Serverless</label><input type="number" id="fc-sv" value="200" oninput="calcSavings()"></div>
+      <div class="field"><label class="lbl">Other</label><input type="number" id="fc-o" value="300" oninput="calcSavings()"></div>
+      <div style="background:var(--sur2);border:1px solid var(--bdr);border-radius:10px;padding:1rem;margin-top:.5rem">
+        <div style="font-size:10.5px;color:var(--tx3);font-family:var(--mono);margin-bottom:.3rem">รวม/เดือน</div>
+        <div id="fc-total" style="font-family:var(--dis);font-size:28px;font-weight:800;letter-spacing:-.04em">$9,000</div>
+        <div id="fc-yr" style="font-size:11px;color:var(--tx2);margin-top:.2rem">= $108,000/ปี</div>
+      </div>
+    </div>
+    <div>
+      <div class="sh">SAVINGS ANALYSIS</div>
+      <div id="fc-rows" style="margin-bottom:.85rem"></div>
+      <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:1rem">
+        <div style="font-size:10.5px;color:var(--grn);font-family:var(--mono);margin-bottom:.3rem">ประหยัดได้/เดือน</div>
+        <div id="fc-saved" style="font-family:var(--dis);font-size:28px;font-weight:800;color:var(--grn);letter-spacing:-.04em">$0</div>
+        <div style="display:flex;gap:1rem;margin-top:.4rem;font-size:12px">
+          <span style="color:var(--tx2)">ต่อปี: <strong id="fc-yr-s" style="color:var(--grn)">$0</strong></span>
+          <span style="color:var(--tx2)">Rate: <strong id="fc-rate" style="color:var(--grn)">0%</strong></span>
+        </div>
+        <div style="margin-top:.4rem;font-size:12px;color:var(--tx2)">หลัง FinOps: <strong id="fc-after" style="font-size:14px;color:var(--tx)">$0</strong>/mo</div>
+      </div>
+      <div style="height:175px;margin-top:.85rem"><canvas id="c-savings"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: UIH ANALYSIS ════ -->
+<div class="page" id="p-uih">
+  <div class="pg-title">🏢 UIH vs Public Cloud</div>
+  <div class="pg-sub">เปรียบเทียบราคา — อัตรา 1 USD = 35 THB | UIH แพงกว่า AWS Bangkok 27–138% แต่รวม managed service</div>
+  <div class="info info-amber"><span>⚠️</span>UIH ราคาประมาณการ — ขอ quote จริงจาก account manager เพื่อเปรียบเทียบที่แม่นยำ</div>
+  <div class="tbl-wrap" style="margin-bottom:1.25rem">
+    <table>
+      <thead><tr><th>Spec</th><th>UIH THB/mo</th><th>UIH USD/mo</th><th>AWS BKK</th><th>Azure</th><th>GCP</th><th>Oracle</th><th>DO</th><th>UIH vs AWS</th></tr></thead>
+      <tbody id="uih-tbody"></tbody>
+    </table>
+  </div>
+  <div style="height:230px"><canvas id="c-uih"></canvas></div>
+</div>
+
+<!-- ════ PAGE: OPTIMIZER ════ -->
+<div class="page" id="p-optimizer">
+  <div class="pg-title">🎯 Cost Optimizer</div>
+  <div class="pg-sub">วิเคราะห์ workload → แนะนำ Provider ที่ดีที่สุดจาก Live Pricing</div>
+  <div class="g2" style="gap:1rem">
+    <div class="card">
+      <div class="card-t">⚙️ Workload Profile</div>
+      <div class="field"><label class="lbl">ประเภท Workload</label>
+        <select id="opt-t" onchange="runOptimizer()"><option value="web">Web App / API</option><option value="batch">Batch / Pipeline</option><option value="ml">ML / AI Training</option><option value="db">Database</option><option value="dev">Dev / Test</option><option value="k8s">Container / K8s</option></select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label class="lbl">vCPU</label><input type="number" id="opt-v" value="4" oninput="runOptimizer()"></div>
+        <div class="field"><label class="lbl">RAM (GB)</label><input type="number" id="opt-r" value="16" oninput="runOptimizer()"></div>
+      </div>
+      <div class="field"><label class="lbl">Traffic Pattern</label>
+        <select id="opt-tr" onchange="runOptimizer()"><option value="steady">Steady → ใช้ Reserved</option><option value="variable">Variable → Auto-Scale</option><option value="batch">Batch → Spot</option></select>
+      </div>
+      <div class="field"><label class="lbl">PDPA / เก็บข้อมูลในไทย</label>
+        <select id="opt-p" onchange="runOptimizer()"><option value="no">ไม่บังคับ (เลือก cheapest)</option><option value="yes">บังคับ (ต้องเก็บในไทย)</option></select>
+      </div>
+      <div class="field"><label class="lbl">Budget/เดือน (USD)</label><input type="number" id="opt-b" value="200" oninput="runOptimizer()"></div>
+    </div>
+    <div>
+      <div class="card-t" style="padding:0 0 .75rem">🏆 Recommendations</div>
+      <div id="opt-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: ALERTS ════ -->
+<div class="page" id="p-alerts">
+  <div class="pg-title">🔔 Active Alerts</div>
+  <div class="pg-sub">Alerts ที่ต้องการ action</div>
+  <div id="alerts-list"></div>
+</div>
+
+<!-- ════ ADMIN PAGES ════ -->
+
+<!-- Manage Pricing -->
+<div class="page" id="p-manage">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+    <div><div class="pg-title">🔧 Manage Pricing Database</div><div class="pg-sub" style="margin:0">เพิ่ม/แก้ไข/ลบ ราคาทุก Provider — บันทึกลง Supabase ทันที</div></div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-pri btn-sm" onclick="openModal('m-pricing')">+ เพิ่มใหม่</button>
+      <button class="btn btn-amb btn-sm" onclick="syncPricing()">🔄 Auto-sync Global</button>
+      <button class="btn btn-ghost btn-sm" onclick="importPricingCSV()">📂 Import CSV</button>
+    </div>
+  </div>
+  <div class="info info-blue"><span>ℹ️</span><div><strong>Global Cloud</strong> (AWS/Azure/GCP/Oracle) — กด Auto-sync ดึงราคาล่าสุดอัตโนมัติ | <strong>Local Thai</strong> (UIH/NIPA/PROEN/NT) — กรอกเองจาก quote</div></div>
+  <div id="manage-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem"></div>
+</div>
+
+<!-- Users -->
+<div class="page" id="p-users">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div><div class="pg-title">👥 Users</div><div class="pg-sub" style="margin:0">Admin + ลูกค้า View-only</div></div>
+    <button class="btn btn-pri btn-sm" onclick="openModal('m-invite')">+ Invite User</button>
+  </div>
+  <div class="card">
+    <div style="font-size:10.5px;font-weight:700;color:var(--tx3);font-family:var(--mono);display:grid;grid-template-columns:1fr 120px 130px 80px;gap:.75rem;padding:.5rem .85rem;border-bottom:1px solid var(--bdr)">
+      <div>USER</div><div>ROLE</div><div>LAST ACTIVE</div><div>ACTIONS</div>
+    </div>
+    <div id="user-list"></div>
+  </div>
+</div>
+
+<!-- API Keys -->
+<div class="page" id="p-keys">
+  <div class="pg-title">🔑 API Keys</div>
+  <div class="pg-sub">กำหนด credentials สำหรับ Auto-sync และ Monitoring — เก็บใน Supabase</div>
+  <div class="g2" style="gap:1rem">
+    <div class="card">
+      <div class="sh">Global Cloud APIs</div>
+      <div class="field"><label class="lbl">AWS Access Key ID</label><input type="password" id="k-aws-id" placeholder="AKIA..."></div>
+      <div class="field"><label class="lbl">AWS Secret Key</label><input type="password" id="k-aws-sec" placeholder="..."></div>
+      <div class="field"><label class="lbl">AWS Region (Cost Explorer)</label><input type="text" id="k-aws-reg" value="ap-southeast-7"></div>
+      <button class="btn btn-grn btn-sm" onclick="saveKey('aws')">✓ Test & Save AWS</button>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--bdr)">
+        <div class="field"><label class="lbl">Azure Tenant ID</label><input type="password" id="k-az-ten" placeholder="..."></div>
+        <div class="field"><label class="lbl">Azure Client ID</label><input type="password" id="k-az-cl" placeholder="..."></div>
+        <div class="field"><label class="lbl">Azure Client Secret</label><input type="password" id="k-az-sec" placeholder="..."></div>
+        <button class="btn btn-grn btn-sm" onclick="saveKey('azure')">✓ Test & Save Azure</button>
+      </div>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--bdr)">
+        <div class="field"><label class="lbl">GCP Service Account JSON</label><textarea id="k-gcp" rows="3" placeholder='{"type":"service_account",...}'></textarea></div>
+        <button class="btn btn-grn btn-sm" onclick="saveKey('gcp')">✓ Test & Save GCP</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sh">Monitoring & AI</div>
+      <div class="field"><label class="lbl">Datadog API Key</label><input type="password" id="k-dd-api" placeholder="dd_api_v2_..."></div>
+      <div class="field"><label class="lbl">Datadog App Key</label><input type="password" id="k-dd-app" placeholder="..."></div>
+      <div class="field"><label class="lbl">Datadog Site</label>
+        <select id="k-dd-site"><option value="datadoghq.com">US (datadoghq.com)</option><option value="datadoghq.eu">EU</option><option value="ap1.datadoghq.com">AP1</option></select>
+      </div>
+      <button class="btn btn-grn btn-sm" onclick="saveKey('datadog')">✓ Test & Save Datadog</button>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--bdr)">
+        <div class="field"><label class="lbl">Claude API Key (AI Analysis)</label><input type="password" id="k-claude" placeholder="sk-ant-api03-..."></div>
+        <button class="btn btn-grn btn-sm" onclick="saveKey('claude')">✓ Test & Save Claude</button>
+      </div>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--bdr)">
+        <div class="sh">Connection Status</div>
+        <div id="key-status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Rules -->
+<div class="page" id="p-arules">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div><div class="pg-title">🔔 Alert Rules</div><div class="pg-sub" style="margin:0">ตั้ง alert เมื่อ cost spike หรือ infra มีปัญหา</div></div>
+    <button class="btn btn-pri btn-sm" onclick="openModal('m-alert')">+ เพิ่ม Alert</button>
+  </div>
+  <div id="alert-rules"></div>
+</div>
+
+
+<div class="page" id="p-storage">
+  <div class="page-title">Storage Pricing</div>
+  <div class="page-sub">Object Storage ทุก Tier ทุก Provider — US East, Q1 2026</div>
+  <div class="filter-bar">
+    <button class="fc on" onclick="setStorageFilter('all',this)">All</button>
+    <button class="fc" onclick="setStorageFilter('standard',this)">Standard</button>
+    <button class="fc" onclick="setStorageFilter('cold',this)">Cold/Cool</button>
+    <button class="fc" onclick="setStorageFilter('archive',this)">Archive</button>
+    <label class="lbl" style="margin-left:auto">คำนวณที่</label>
+    <select id="storage-tb" onchange="renderStorageChart()" style="width:100px">
+      <option value="1">1 TB/mo</option><option value="10" selected>10 TB/mo</option>
+      <option value="100">100 TB/mo</option>
+    </select>
+  </div>
+  <div class="tbl-wrap" style="margin-bottom:1.25rem">
+    <table><thead><tr><th>Provider</th><th>Service</th><th>$/GB/mo</th><th>1 TB/mo</th><th>10 TB/mo</th><th>100 TB/mo</th><th>Retrieval</th><th>Tier</th></tr></thead>
+    <tbody id="storage-tbody"></tbody></table>
+  </div>
+  <div class="g2 gap">
+    <div class="card"><div class="card-title" id="storage-chart-title">📊 Cost ที่ 10 TB/mo</div><div style="height:220px"><canvas id="c-storage-bar"></canvas></div></div>
+    <div class="card"><div class="card-title">💡 Storage Strategy</div>
+      <div style="font-size:12px;display:flex;flex-direction:column;gap:.5rem">
+        <div class="info info-green"><span class="info-icon">🏆</span>Azure Blob Archive ($0.00099/GB) ถูกสุดสำหรับ long-term archive</div>
+        <div class="info info-green"><span class="info-icon">🏆</span>Oracle Retrieval ฟรีทั้งหมด เหมาะ read-heavy workloads</div>
+        <div class="info info-blue"><span class="info-icon">💡</span>AWS S3 Intelligent-Tiering auto-move ข้อมูลที่ไม่ใช้ไป archive</div>
+        <div class="info info-amber"><span class="info-icon">⚠️</span>DigitalOcean Spaces ถูกที่สุดสำหรับ CDN-served static assets</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: NETWORK ════ -->
+<div class="page" id="p-network">
+  <div class="page-title">Network Egress Pricing</div>
+  <div class="page-sub">Hidden Cost ที่ต้องระวัง — Ingress ฟรีทุกเจ้า แต่ Egress ต่างกัน 10 เท่า!</div>
+  <div class="info info-red" style="margin-bottom:1rem"><span class="info-icon">🚨</span><strong>AWS Egress แพงกว่า Oracle ถึง 10x</strong> — ส่ง 50TB/เดือน: AWS $4,250 vs Oracle $341 ต่างกัน $3,909/เดือน = $46,908/ปี!</div>
+  <div class="tbl-wrap" style="margin-bottom:1.25rem">
+    <table><thead><tr><th>Provider</th><th>First 10 TB</th><th>10–50 TB</th><th>50 TB+</th><th>Inter-Region</th><th>Free/mo</th><th>Egress 50TB Cost</th><th>vs AWS</th></tr></thead>
+    <tbody id="network-tbody"></tbody></table>
+  </div>
+  <div class="g2 gap">
+    <div class="card"><div class="card-title">📊 Egress Cost — 50TB/month</div><div style="height:220px"><canvas id="c-network-bar"></canvas></div></div>
+    <div class="card">
+      <div class="card-title">🧮 คำนวณค่า Egress</div>
+      <div class="field" style="margin-bottom:.65rem"><label class="lbl">ข้อมูลที่ส่งออก/เดือน (TB)</label>
+        <input type="range" id="egress-slider" min="0.1" max="200" value="50" step="0.1" oninput="calcEgress()">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:.25rem"><span>0.1 TB</span><span id="egress-val" style="font-family:var(--mono);color:var(--blue)">50 TB</span><span>200 TB</span></div>
+      </div>
+      <div id="egress-results" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: DISCOUNT ════ -->
+<div class="page" id="p-discount">
+  <div class="page-title">Discount Models</div>
+  <div class="page-sub">เปรียบเทียบวิธีประหยัดค่า Cloud จากทุก Provider</div>
+  <div class="tbl-wrap" style="margin-bottom:1.25rem">
+    <table><thead><tr><th>Provider</th><th>On-Demand</th><th>1-yr Commit</th><th>3-yr Commit</th><th>Spot/Preemptible</th><th>Auto Discount</th><th>Arm Savings</th></tr></thead>
+    <tbody id="discount-tbody"></tbody></table>
+  </div>
+  <div class="g2 gap">
+    <div class="card"><div class="card-title">📊 Discount % Comparison</div><div style="height:240px"><canvas id="c-discount"></canvas></div></div>
+    <div class="card">
+      <div class="card-title">💡 Strategy Guide</div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;font-size:12px">
+        <div class="info info-green"><span class="info-icon">🏆</span>GCP CUD 1-yr ส่วนลด 57% สูงสุด ไม่ต้องจ่ายล่วงหน้า</div>
+        <div class="info info-green"><span class="info-icon">🏆</span>Azure Arm (Ampere) ถูกกว่า x86 ถึง 65% — gap ใหญ่ที่สุดในตลาด</div>
+        <div class="info info-blue"><span class="info-icon">💡</span>GCP SUD: discount 30% อัตโนมัติ ไม่ต้อง commit ใดๆ</div>
+        <div class="info info-blue"><span class="info-icon">💡</span>AWS Savings Plans ยืดหยุ่นกว่า RI — ย้าย service ได้</div>
+        <div class="info info-amber"><span class="info-icon">⚠️</span>Oracle base price ถูกสุดแม้ไม่ commit — เหมาะถ้าไม่แน่ใจ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: REGIONAL ════ -->
+<div class="page" id="p-tco">
+  <div class="page-title">TCO Calculator</div>
+  <div class="page-sub">คำนวณ Total Cost of Ownership จริง — รวม hidden costs ทั้งหมด</div>
+  <div class="g2 gap">
+    <div>
+      <div class="section-title">INPUT — ข้อมูล VM ปัจจุบัน</div>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <div class="field"><label class="lbl">จำนวน VM ทั้งหมด</label><input type="number" id="tco-vms" value="6" oninput="calcTCO()"></div>
+        <div class="field"><label class="lbl">ค่า UIH รวม/เดือน (บาท)</label><input type="number" id="tco-uih" value="72000" oninput="calcTCO()"></div>
+        <div class="field-row">
+          <div class="field"><label class="lbl">vCPU เฉลี่ย/VM</label><input type="number" id="tco-vcpu" value="4" oninput="calcTCO()"></div>
+          <div class="field"><label class="lbl">RAM เฉลี่ย/VM (GB)</label><input type="number" id="tco-ram" value="16" oninput="calcTCO()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label class="lbl">CPU Util (%)</label><input type="number" id="tco-cpu" value="35" min="1" max="100" oninput="calcTCO()"></div>
+          <div class="field"><label class="lbl">RAM Util (%)</label><input type="number" id="tco-mem" value="50" min="1" max="100" oninput="calcTCO()"></div>
+        </div>
+        <div class="field"><label class="lbl">ค่า DevOps ถ้าย้ายไป Cloud (บาท/เดือน)</label><input type="number" id="tco-eng" value="80000" oninput="calcTCO()"></div>
+        <div class="field"><label class="lbl">Exchange Rate (THB/USD)</label><input type="number" id="tco-rate" value="35" oninput="calcTCO()"></div>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">TCO ANALYSIS</div>
+      <div class="tbl-wrap" style="margin-bottom:1rem">
+        <table><thead><tr><th>รายการ</th><th>UIH/mo</th><th>AWS BKK/mo</th><th>GCP/mo</th><th>Oracle/mo</th></tr></thead>
+        <tbody id="tco-tbody"></tbody></table>
+      </div>
+      <div id="tco-verdict" style="padding:1rem;border-radius:10px;border:1px solid var(--border);background:var(--surface)"></div>
+    </div>
+  </div>
+  <div style="height:220px;margin-top:1.25rem"><canvas id="c-tco-bar"></canvas></div>
+</div>
+
+<!-- ════ PAGE: MIGRATE ════ -->
+<div class="page" id="p-migrate">
+  <div class="page-title">Migration Decision Framework</div>
+  <div class="page-sub">ตอบ 12 คำถาม — ระบบจะแนะนำ strategy ที่เหมาะสมสำหรับองค์กรของคุณ</div>
+  <div class="g2 gap">
+    <div>
+      <div class="section-title">คำถาม Scoring (1 = ใช่, 0 = ไม่)</div>
+      <div style="display:flex;flex-direction:column;gap:.5rem" id="mq-container"></div>
+    </div>
+    <div>
+      <div class="section-title">ผลการประเมิน</div>
+      <div style="margin-bottom:1rem">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:.25rem">คะแนนรวม (บวก=Stay UIH, ลบ=Move Cloud)</div>
+        <div class="big-score" id="mq-score" style="color:var(--blue)">0</div>
+      </div>
+      <div id="mq-verdict" style="padding:1rem;border-radius:10px;border:1px solid var(--border);background:var(--surface);margin-bottom:1rem"></div>
+      <div style="height:190px"><canvas id="c-migrate"></canvas></div>
+      <div style="margin-top:1rem;font-size:12px;display:flex;flex-direction:column;gap:.4rem" id="mq-guide"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: THAI PROVIDERS ════ -->
+<div class="page" id="p-thai">
+  <div class="page-title">Thai Cloud Providers</div>
+  <div class="page-sub">Local Cloud ในประเทศไทย — ผู้ให้บริการที่มี DC และ Infrastructure ในไทย</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem" id="thai-cards"></div>
+</div>
+
+<!-- ════ PAGE: RESELLERS ════ -->
+<div class="page" id="p-resellers">
+  <div class="page-title">Cloud Resellers & Partners</div>
+  <div class="page-sub">ผู้ขายต่อและพาร์ทเนอร์ทางการของ Global Cloud ในประเทศไทย</div>
+  <div class="filter-bar">
+    <button class="fc on" onclick="setResellerFilter('all',this)">ทั้งหมด</button>
+    <button class="fc" onclick="setResellerFilter('aws',this)">AWS</button>
+    <button class="fc" onclick="setResellerFilter('azure',this)">Azure</button>
+    <button class="fc" onclick="setResellerFilter('gcp',this)">GCP</button>
+    <button class="fc" onclick="setResellerFilter('multi',this)">Multi-Cloud</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem" id="reseller-cards"></div>
+</div>
+
+<!-- ════ PAGE: DATADOG ════ -->
+<div class="page" id="p-datadog">
+  <div class="page-title">Datadog Config Generator</div>
+  <div class="page-sub">สร้าง config ครบทุกไฟล์ — Local Thai Cloud + Global Cloud Multi-Cloud Monitoring</div>
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:1rem;height:calc(100vh - 200px)">
+    <div style="overflow-y:auto">
+      <div class="section-title">Agent Config</div>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <div class="field"><label class="lbl">API Key</label><input type="password" id="dd-apikey" placeholder="dd_api_v2_..." oninput="ddRegen()"></div>
+        <div class="field-row">
+          <div class="field"><label class="lbl">Site</label>
+            <select id="dd-site" onchange="ddRegen()">
+              <option value="datadoghq.com">US (datadoghq.com)</option>
+              <option value="datadoghq.eu">EU</option>
+              <option value="ap1.datadoghq.com">AP1</option>
+            </select>
+          </div>
+          <div class="field"><label class="lbl">Provider</label>
+            <select id="dd-provider" onchange="ddRegen()">
+              <option value="uih">UIH / Cloud HM</option>
+              <option value="nipa">NIPA Cloud</option>
+              <option value="proen">PROEN Cloud</option>
+              <option value="nt">NT Cloud</option>
+              <option value="aws">AWS</option>
+              <option value="azure">Azure</option>
+              <option value="gcp">GCP</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label class="lbl">Env</label>
+            <select id="dd-env" onchange="ddRegen()">
+              <option value="prod">Production</option>
+              <option value="staging">Staging</option>
+              <option value="dev">Dev</option>
+            </select>
+          </div>
+          <div class="field"><label class="lbl">Service</label><input type="text" id="dd-service" placeholder="web-app" oninput="ddRegen()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label class="lbl">Team</label><input type="text" id="dd-team" placeholder="devops" oninput="ddRegen()"></div>
+          <div class="field"><label class="lbl">Region</label><input type="text" id="dd-region" placeholder="th-bkk" oninput="ddRegen()"></div>
+        </div>
+        <div class="field"><label class="lbl">Project</label><input type="text" id="dd-project" placeholder="cloud-platform" oninput="ddRegen()"></div>
+      </div>
+      <div class="section-title" style="margin-top:1rem">Features</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+        <label class="fc on" style="cursor:pointer" onclick="this.classList.toggle('on');ddRegen()">Logs</label>
+        <label class="fc on" style="cursor:pointer" onclick="this.classList.toggle('on');ddRegen()">APM</label>
+        <label class="fc on" style="cursor:pointer" onclick="this.classList.toggle('on');ddRegen()">Process</label>
+        <label class="fc on" style="cursor:pointer" onclick="this.classList.toggle('on');ddRegen()">Network</label>
+        <label class="fc" style="cursor:pointer" onclick="this.classList.toggle('on');ddRegen()">Security</label>
+        <label class="fc" style="cursor:pointer" onclick="this.classList.toggle('on');ddRegen()">DBM</label>
+      </div>
+      <div class="section-title" style="margin-top:1rem">Cloud Integration</div>
+      <div class="field"><label class="lbl">AWS Account ID</label><input type="text" id="dd-aws" placeholder="123456789012" oninput="ddRegen()"></div>
+      <div class="field"><label class="lbl">Azure Tenant ID</label><input type="text" id="dd-az" placeholder="xxxxxxxx-xxxx..." oninput="ddRegen()"></div>
+      <div class="field"><label class="lbl">GCP Project ID</label><input type="text" id="dd-gcp" placeholder="my-project-id" oninput="ddRegen()"></div>
+      <div class="field"><label class="lbl">Nutanix Prism Host (UIH)</label><input type="text" id="dd-prism" placeholder="prism.uih.internal" oninput="ddRegen()"></div>
+      <div style="display:flex;gap:.5rem;margin-top:1rem">
+        <button class="btn btn-primary btn-sm" onclick="ddCopy()">📋 Copy</button>
+        <button class="btn btn-emerald btn-sm" onclick="ddDownload()">⬇ Download All</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden">
+      <div class="code-tabs">
+        <div class="ct on" onclick="ddTab('yaml',this)">datadog.yaml</div>
+        <div class="ct" onclick="ddTab('install',this)">install_agent.sh</div>
+        <div class="ct" onclick="ddTab('billing',this)">billing_pipeline.py</div>
+        <div class="ct" onclick="ddTab('tf',this)">terraform.tfvars</div>
+      </div>
+      <div id="dd-code" class="code-preview" style="flex:1;overflow:auto;border:none;border-radius:0;margin:0"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: QUICK COMPARE ════ -->
+<div class="page" id="p-upload">
+  <div class="pg-title">📂 Upload & Analyze</div>
+  <div class="pg-sub">อัพโหลด CSV/Excel จาก Datadog หรือ Cloud billing แล้ววิเคราะห์ด้วย Claude AI ทันที</div>
+
+  <!-- AI Key -->
+  <div class="ai-setup">
+    <div class="ai-setup-label">🤖 <strong>Claude AI Analysis:</strong> ใส่ API Key เพื่อรับการวิเคราะห์เชิงลึกและคำแนะนำ FinOps อัตโนมัติ</div>
+    <input type="password" class="ai-key-input" id="claude-key" placeholder="sk-ant-api03-..." oninput="saveClaude()">
+    <button class="btn btn-ghost btn-sm" onclick="testClaude()">Test</button>
+  </div>
+
+  <!-- Datadog Workflow Guide -->
+  <div class="card" style="margin-bottom:1.25rem;border-color:rgba(99,190,246,.25);background:linear-gradient(135deg,var(--sur),rgba(59,130,246,.03))">
+    <div class="card-t">🐶 วิธี Export จาก Datadog แล้วนำมาวิเคราะห์ใน CloudLens</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem">
+
+      <div style="background:var(--sur2);border-radius:10px;padding:.85rem 1rem;border:1px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--blu);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">1</div>
+          <div style="font-weight:700;font-size:12.5px">Infrastructure Cost</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--tx2);line-height:1.7">
+          Datadog → <strong>Infrastructure → Hosts</strong><br>
+          คลิก <kbd style="background:var(--sur3);padding:1px 5px;border-radius:3px;font-size:10px">Export</kbd> → CSV<br>
+          ได้ข้อมูล: host, CPU%, RAM%, cloud provider<br>
+          <span style="color:var(--grn);font-size:10.5px">→ วิเคราะห์ rightsizing โอกาส</span>
+        </div>
+      </div>
+
+      <div style="background:var(--sur2);border-radius:10px;padding:.85rem 1rem;border:1px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--blu);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">2</div>
+          <div style="font-weight:700;font-size:12.5px">Cloud Cost Report</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--tx2);line-height:1.7">
+          Datadog → <strong>Cloud Cost Management</strong><br>
+          เลือก time range → <kbd style="background:var(--sur3);padding:1px 5px;border-radius:3px;font-size:10px">Export CSV</kbd><br>
+          ได้ข้อมูล: service, cost, tag, trend<br>
+          <span style="color:var(--grn);font-size:10.5px">→ เปรียบเทียบกับ provider อื่น</span>
+        </div>
+      </div>
+
+      <div style="background:var(--sur2);border-radius:10px;padding:.85rem 1rem;border:1px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--blu);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">3</div>
+          <div style="font-weight:700;font-size:12.5px">AWS/Azure/GCP Billing</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--tx2);line-height:1.7">
+          AWS Cost Explorer → <strong>Download CSV</strong><br>
+          Azure Cost Management → <strong>Export</strong><br>
+          GCP Billing → <strong>Export to CSV</strong><br>
+          <span style="color:var(--grn);font-size:10.5px">→ Claude วิเคราะห์ 5 วิธีประหยัด</span>
+        </div>
+      </div>
+
+      <div style="background:var(--sur2);border-radius:10px;padding:.85rem 1rem;border:1px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--vio);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">4</div>
+          <div style="font-weight:700;font-size:12.5px">UIH Invoice</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--tx2);line-height:1.7">
+          ขอ Itemized Invoice จาก UIH Account Manager<br>
+          แปลงเป็น CSV (VM Name, Spec, Cost THB)<br>
+          <span style="color:var(--grn);font-size:10.5px">→ เปรียบเทียบกับ AWS Bangkok ทันที</span>
+        </div>
+      </div>
+
+      <div style="background:var(--sur2);border-radius:10px;padding:.85rem 1rem;border:1px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--amb);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">5</div>
+          <div style="font-weight:700;font-size:12.5px">Upload & วิเคราะห์</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--tx2);line-height:1.7">
+          ลากไฟล์ CSV/Excel มาวางด้านล่าง<br>
+          เลือก Analysis Type ที่ต้องการ<br>
+          กด <strong>Analyze with AI</strong><br>
+          <span style="color:var(--grn);font-size:10.5px">→ ได้ recommendations ภาษาไทย</span>
+        </div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(6,182,212,.06));border-radius:10px;padding:.85rem 1rem;border:1px solid rgba(16,185,129,.2)">
+        <div style="font-size:11px;font-weight:700;color:var(--grn);margin-bottom:.5rem">📋 CSV Format ที่รองรับ</div>
+        <div style="font-size:10.5px;color:var(--tx2);line-height:1.8;font-family:var(--mono)">
+          Provider, Service, Cost (USD)<br>
+          VM Name, Spec, CPU%, Cost (THB)<br>
+          Date, Resource, Amount<br>
+          <span style="color:var(--tx3)">— หรือ format ใดก็ได้ Claude จะ parse เอง</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Upload Zone -->
+  <div class="g2" style="gap:1rem;margin-bottom:1.25rem">
+    <div>
+      <div class="sh">อัพโหลดไฟล์</div>
+      <div class="dropzone" id="dropzone"
+        onclick="document.getElementById('file-input').click()"
+        ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadFile(this.files[0])">
+        <div class="dz-icon">📄</div>
+        <div class="dz-title">Drag & Drop หรือคลิกเพื่อเลือกไฟล์</div>
+        <div class="dz-sub">รองรับ Excel (.xlsx, .xls) และ CSV<br>Datadog export, Cloud billing, UIH invoice</div>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="loadSample('finops')">📊 Sample FinOps Data</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadSample('uih')">🏢 Sample UIH Invoice</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadSample('billing')">💰 Sample Cloud Billing</button>
+      </div>
+    </div>
+    <div>
+      <div class="sh">ข้อมูลไฟล์</div>
+      <div id="file-info" style="font-size:12px;color:var(--tx2);padding:.65rem 0">ยังไม่ได้อัพโหลดไฟล์</div>
+      <div id="sheet-selector" style="display:none;margin-top:.75rem">
+        <label class="lbl">เลือก Sheet</label>
+        <select id="sheet-select" onchange="loadSheet()" style="margin-top:.35rem"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parsed Data -->
+  <div id="parsed-section" style="display:none">
+    <div class="sh">ข้อมูลที่อ่านได้</div>
+    <div class="tbl-wrap" style="max-height:240px;overflow-y:auto;margin-bottom:1.25rem">
+      <table id="parsed-table">
+        <thead id="parsed-thead"></thead>
+        <tbody id="parsed-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="sh">Auto Analysis</div>
+    <div id="auto-analysis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-bottom:1.25rem"></div>
+
+    <div class="sh">🤖 AI Analysis</div>
+    <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+      <select id="analysis-type" style="flex:1;min-width:200px">
+        <option value="cost">💰 วิเคราะห์ค่าใช้จ่าย — หาจุดที่จ่ายเกินและโอกาสประหยัด</option>
+        <option value="compare">⚡ เปรียบเทียบกับ Public Cloud — UIH vs AWS/GCP</option>
+        <option value="finops">🎯 FinOps Recommendations — 5 วิธีประหยัดที่เหมาะกับ data นี้</option>
+        <option value="migrate">🚀 Migration Analysis — ควรย้ายไป Cloud ไหน</option>
+        <option value="optimize">📋 Optimization Roadmap — แผน 90 วัน</option>
+        <option value="datadog">🐶 Datadog Report Analysis — วิเคราะห์ผล Datadog export</option>
+      </select>
+      <button class="btn btn-pri" onclick="runAI()">
+        <span id="ai-btn-text">🤖 Analyze with AI</span>
+      </button>
+    </div>
+    <div id="ai-result-box" style="display:none;background:var(--sur);border:1px solid rgba(59,130,246,.2);border-radius:12px;padding:1.25rem;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blu),var(--cyn),var(--grn))"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--blu);letter-spacing:.1em;text-transform:uppercase;font-family:var(--mono);margin-bottom:.65rem">🤖 Claude AI Analysis</div>
+      <div class="ai-text" id="ai-result-text" style="font-size:13px;color:var(--tx2);line-height:1.7;white-space:pre-wrap"></div>
+    </div>
+  </div>
+</div>
+</div><!-- /content -->
+  </div><!-- /app-body -->
+</div><!-- /app-page -->
+
+<!-- ══════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════ -->
+
+<!-- Pricing Modal -->
+<div class="modal-bg" id="m-pricing" onclick="if(event.target===this)closeModal('m-pricing')">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('m-pricing')">✕</button>
+    <div class="modal-title" id="m-pricing-title">เพิ่ม Pricing</div>
+    <input type="hidden" id="mp-id">
+    <div class="field-row">
+      <div class="field"><label class="lbl">Provider</label>
+        <select id="mp-prov"><option>AWS</option><option>Azure</option><option>GCP</option><option>Oracle</option><option>DigitalOcean</option><option>UIH</option><option>NIPA</option><option>PROEN</option><option>NT</option><option>TrueIDC</option><option>INET</option></select>
+      </div>
+      <div class="field"><label class="lbl">Category</label>
+        <select id="mp-cat"><option value="compute">Compute</option><option value="storage">Storage</option><option value="network">Network</option></select>
+      </div>
+    </div>
+    <div class="field"><label class="lbl">Instance / Service Name</label><input type="text" id="mp-name" placeholder="m5.xlarge, D4s v5, VM Standard..."></div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">vCPU</label><input type="number" id="mp-vcpu"></div>
+      <div class="field"><label class="lbl">RAM (GB)</label><input type="number" id="mp-ram"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">OD/hr (USD)</label><input type="number" id="mp-hr" step="0.0001"></div>
+      <div class="field"><label class="lbl">OD/mo (USD)</label><input type="number" id="mp-mo"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">RI/mo (USD)</label><input type="number" id="mp-ri"></div>
+      <div class="field"><label class="lbl">RI Saving (%)</label><input type="number" id="mp-rip"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">THB/mo (Local)</label><input type="number" id="mp-thb"></div>
+      <div class="field"><label class="lbl">Region</label><input type="text" id="mp-reg" placeholder="ap-southeast-7, th-bkk"></div>
+    </div>
+    <div class="field"><label class="lbl">หมายเหตุ</label><input type="text" id="mp-note"></div>
+    <div class="field"><label class="lbl">Source</label>
+      <select id="mp-src"><option value="manual">Manual (Local Thai)</option><option value="api">Auto API (Global)</option></select>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-pricing')">ยกเลิก</button>
+      <button class="btn btn-pri" onclick="savePricing()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Local Bill Modal -->
+<div class="modal-bg" id="m-bill" onclick="if(event.target===this)closeModal('m-bill')">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('m-bill')">✕</button>
+    <div class="modal-title">กรอก Invoice</div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">Provider</label>
+        <select id="mb-prov"><option>UIH</option><option>NIPA</option><option>PROEN</option><option>NT</option><option>TrueIDC</option><option>INET</option></select>
+      </div>
+      <div class="field"><label class="lbl">เดือน</label><input type="month" id="mb-month"></div>
+    </div>
+    <div class="field"><label class="lbl">รายการ</label><input type="text" id="mb-item" placeholder="VM-Web-01, Storage Package A..."></div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">ยอดรวม (บาท)</label><input type="number" id="mb-thb" oninput="mb_thb()"></div>
+      <div class="field"><label class="lbl">USD (คำนวณอัตโนมัติ)</label><input type="number" id="mb-usd" readonly style="opacity:.6"></div>
+    </div>
+    <div class="field"><label class="lbl">Exchange Rate (THB/USD)</label><input type="number" id="mb-rate" value="35" oninput="mb_thb()"></div>
+    <div class="field"><label class="lbl">หมายเหตุ</label><input type="text" id="mb-note"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-bill')">ยกเลิก</button>
+      <button class="btn btn-pri" onclick="saveBill()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite User Modal -->
+<div class="modal-bg" id="m-invite" onclick="if(event.target===this)closeModal('m-invite')">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('m-invite')">✕</button>
+    <div class="modal-title">+ Invite User</div>
+    <div class="field"><label class="lbl">Email</label><input type="email" id="inv-email" placeholder="customer@company.com"></div>
+    <div class="field"><label class="lbl">ชื่อ</label><input type="text" id="inv-name" placeholder="คุณชาติ ABC Corp"></div>
+    <div class="field"><label class="lbl">Role</label>
+      <select id="inv-role"><option value="viewer">Viewer (ลูกค้า — ดูได้อย่างเดียว)</option><option value="admin">Admin (ทีม ANTS — แก้ไขได้)</option></select>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-invite')">ยกเลิก</button>
+      <button class="btn btn-pri" onclick="inviteUser()">📧 Invite</button>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Rule Modal -->
+<div class="modal-bg" id="m-alert" onclick="if(event.target===this)closeModal('m-alert')">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('m-alert')">✕</button>
+    <div class="modal-title">+ เพิ่ม Alert Rule</div>
+    <div class="field"><label class="lbl">ประเภท</label>
+      <select id="al-type"><option value="cost_spike">Cost Spike</option><option value="budget">Budget Threshold</option><option value="cpu">CPU High</option><option value="memory">Memory Low</option><option value="agent_down">Agent Down</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label class="lbl">Threshold</label><input type="number" id="al-th" placeholder="80"></div>
+      <div class="field"><label class="lbl">หน่วย</label><input type="text" id="al-unit" value="%" placeholder="% หรือ USD"></div>
+    </div>
+    <div class="field"><label class="lbl">แจ้งเตือนไปที่ (Email)</label><input type="email" id="al-email" placeholder="devops@ants.co.th"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-alert')">ยกเลิก</button>
+      <button class="btn btn-pri" onclick="saveAlert()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let SB=null, currentUser=null, currentRole='viewer', isDemo=false;
+let pricingData=[], billsData=[], alertRules=[], usersData=[];
+let charts={}, metricsTimer=null;
+let ddFiles={}, ddCurrentFile="yaml";
+let resellerFilter="all", storageFilter="all";
+let compareSet=new Set();
+let uploadedWB=null, uploadedData=[], currentSheet="";
+let pricingFilter='all', finopsFilter='all', metricsFilter='all';
+
+// ═══════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════
+function toast(msg, type='ok') {
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=type==='err'?'err show':'show';
+  setTimeout(()=>t.className=t.className.replace(' show',''),2800);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function mkChart(id, type, labels, datasets, opts={}) {
+  if (charts[id]) { try{charts[id].destroy()}catch(e){} }
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  try {
+    charts[id] = new Chart(canvas, {
+      type, data:{labels, datasets},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{color:'#7a98bc',font:{size:11},boxWidth:10,padding:10}},
+          tooltip:{backgroundColor:'#121f3a',borderColor:'#1a2f50',borderWidth:1,bodyColor:'#e8f0fe',titleColor:'#e8f0fe'}
+        },
+        scales: (type!=='doughnut'&&type!=='pie') ? {
+          x:{ticks:{color:'#3d5573',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
+          y:{ticks:{color:'#3d5573',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}
+        } : {},
+        ...opts
+      }
+    });
+  } catch(e) { console.warn('Chart error:',id,e); }
+}
+
+const pBadge = p => `<span class="badge ${({AWS:'b-aws',Azure:'b-azure',GCP:'b-gcp',Oracle:'b-oracle',DigitalOcean:'b-do',UIH:'b-uih',NIPA:'b-nipa',PROEN:'b-proen',NT:'b-nt'}[p]||'b-gray')}">${({AWS:'AWS',Azure:'Azure',GCP:'GCP',Oracle:'Oracle',DigitalOcean:'DO',UIH:'UIH',NIPA:'NIPA',PROEN:'PROEN',NT:'NT'}[p]||p)}</span>`;
+
+// ═══════════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════════
+function initSB() {
+  const url=localStorage.getItem('sb_url');
+  const key=localStorage.getItem('sb_key');
+  if (!url||!key) return false;
+  try {
+    SB = supabase.createClient(url, key);
+    document.getElementById('sb-url').value = url;
+    document.getElementById('sb-key').value = '***';
+    document.getElementById('sb-msg').textContent = '✓ Supabase configured';
+    document.getElementById('sb-msg').style.color = 'var(--grn)';
+    return true;
+  } catch(e) { return false; }
+}
+
+function saveSupabase() {
+  const url=document.getElementById('sb-url').value.trim();
+  const key=document.getElementById('sb-key').value.trim();
+  if (!url||!key||key==='***') { showSBMsg('กรุณากรอก URL และ Key','err'); return; }
+  localStorage.setItem('sb_url',url);
+  localStorage.setItem('sb_key',key);
+  initSB();
+  const savedKey = localStorage.getItem('cl_key');
+  const keyInput = document.getElementById('claude-key');
+  if (savedKey && keyInput) keyInput.value = savedKey;
+  showSBMsg('✓ บันทึกแล้ว','ok');
+}
+
+function showSBMsg(msg,type='ok'){
+  const el=document.getElementById('sb-msg');
+  el.textContent=msg;
+  el.style.color=type==='err'?'var(--red)':'var(--grn)';
+}
+
+async function loadFromSB() {
+  if (!SB||isDemo) return;
+  try {
+    const {data:p}=await SB.from('pricing').select('*').order('provider');
+    if (p?.length) pricingData=p;
+    const {data:b}=await SB.from('local_bills').select('*').order('month',{ascending:false});
+    if (b?.length) billsData=b;
+    const {data:a}=await SB.from('alert_rules').select('*');
+    if (a?.length) alertRules=a;
+    const {data:u}=await SB.from('user_roles').select('*');
+    if (u?.length) usersData=u;
+  } catch(e) { /* use demo data */ }
+}
+
+async function saveSB(table, data, id) {
+  if (!SB||isDemo) return {data:[data]};
+  try {
+    if (id) return await SB.from(table).update(data).eq('id',id).select();
+    return await SB.from(table).insert(data).select();
+  } catch(e) { return {error:e}; }
+}
+
+async function deleteSB(table, id) {
+  if (!SB||isDemo) return;
+  try { await SB.from(table).delete().eq('id',id); } catch(e){}
+}
+
+// ═══════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════
+function showLogin() {
+  document.getElementById('login-page').style.display='flex';
+  document.getElementById('app-page').style.display='none';
+}
+
+function showApp() {
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app-page').style.display='flex';
+  document.getElementById('app-page').style.flexDirection='column';
+  document.getElementById('app-page').style.height='100vh';
+  document.getElementById('app-page').style.overflow='hidden';
+}
+
+function loginDemo() {
+  isDemo=true;
+  currentUser={email:'demo@cloudlens.ai',id:'demo'};
+  currentRole='admin';
+  enterApp();
+}
+
+async function loginSubmit() {
+  const email=document.getElementById('l-email').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  const btn=document.getElementById('l-btn');
+  const err=document.getElementById('l-err');
+  err.style.display='none';
+  if (!email) { showErr('กรุณากรอก Email'); return; }
+
+  btn.textContent='กำลังเข้าสู่ระบบ...'; btn.disabled=true;
+
+  if (SB) {
+    try {
+      const {data,error}=await SB.auth.signInWithPassword({email,password:pass});
+      if (error) throw error;
+      currentUser=data.user;
+      // Determine role
+      try {
+        const {data:rd}=await SB.from('user_roles').select('role').eq('email',email).single();
+        currentRole=rd?.role||'viewer';
+      } catch { currentRole='viewer'; }
+      enterApp();
+    } catch(e) {
+      showErr(e.message||'Email หรือ Password ไม่ถูกต้อง');
+      btn.textContent='เข้าสู่ระบบ'; btn.disabled=false;
+    }
+  } else {
+    // Demo auth without Supabase
+    if (email.toLowerCase().includes('admin')) currentRole='admin';
+    else currentRole='viewer';
+    currentUser={email,id:'local'};
+    enterApp();
+  }
+}
+
+function showErr(msg){
+  const el=document.getElementById('l-err');
+  el.textContent=msg; el.style.display='block';
+  document.getElementById('l-btn').textContent='เข้าสู่ระบบ';
+  document.getElementById('l-btn').disabled=false;
+}
+
+
+// ── LOGIN FUNCTIONS ──────────────────────────────────────────────────────────
+function showLoginPage() {
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('app-page').style.display = 'none';
+}
+
+function showAppPage() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app-page').style.display = 'flex';
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const btn   = document.getElementById('l-btn');
+  const err   = document.getElementById('l-err');
+  err.style.display = 'none';
+
+  if (!email) { err.textContent='กรุณากรอก Email'; err.style.display='block'; return; }
+  if (!pass)  { err.textContent='กรุณากรอก Password'; err.style.display='block'; return; }
+
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  btn.disabled = true;
+
+  // ถ้ามี Supabase
+  if (SB) {
+    try {
+      const { data, error } = await SB.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      currentUser = data.user;
+      try {
+        const { data: rd } = await SB.from('user_roles').select('role').eq('email', email).single();
+        currentRole = rd?.role || 'viewer';
+      } catch { currentRole = 'viewer'; }
+      enterApp();
+      return;
+    } catch(e) {
+      err.textContent = e.message || 'Email หรือ Password ไม่ถูกต้อง';
+      err.style.display = 'block';
+      btn.textContent = 'เข้าสู่ระบบ';
+      btn.disabled = false;
+      return;
+    }
+  }
+
+  // ไม่มี Supabase — simple local auth
+  if (email.toLowerCase().includes('admin') || pass === 'admin') {
+    currentUser = { email, id: 'local' };
+    currentRole = 'admin';
+    enterApp();
+  } else if (email && pass) {
+    currentUser = { email, id: 'local' };
+    currentRole = 'viewer';
+    enterApp();
+  } else {
+    err.textContent = 'Email หรือ Password ไม่ถูกต้อง';
+    err.style.display = 'block';
+    btn.textContent = 'เข้าสู่ระบบ';
+    btn.disabled = false;
+  }
+}
+
+function doDemo() {
+  isDemo = true;
+  currentUser = { email: 'demo@cloudlens.ai', id: 'demo' };
+  currentRole = 'admin';
+  enterApp();
+}
+
+function enterApp() {
+  // Init data
+  pricingData=[...DEFAULT_PRICING];
+  billsData=[...DEFAULT_BILLS];
+  alertRules=[...DEFAULT_ALERTS];
+  usersData=[...DEFAULT_USERS];
+
+  // Show app
+  showAppPage();
+
+  // User info
+  const isAdmin=currentRole==='admin';
+  const email=currentUser?.email||'demo@cloudlens.ai';
+  document.getElementById('u-av').textContent=email[0].toUpperCase();
+  document.getElementById('u-name').textContent=email.split('@')[0];
+  document.getElementById('u-role').textContent=isAdmin?'ADMIN':'VIEWER';
+  document.getElementById('u-role').className='role-pill '+(isAdmin?'rp-admin':'rp-viewer');
+  document.getElementById('tb-live-txt').textContent=isDemo?'Demo':'Live';
+
+  // Admin-only elements
+  const adminEls=['tb-admin','sb-admin-grp','sb-manage','sb-users','sb-keys','sb-arules','th-actions'];
+  adminEls.forEach(id=>{
+    const el=document.getElementById(id);
+    if (el) el.style.display=isAdmin?(el.tagName==='TH'?'table-cell':'block'):'none';
+  });
+
+  // Alert count
+  const cnt=alertRules.filter(a=>a.triggered).length;
+  document.getElementById('alert-cnt').textContent=cnt;
+
+  // Load from Supabase (non-blocking)
+  loadFromSB();
+
+  // Init dashboard after paint
+  setTimeout(()=>renderDashboard(), 200);
+
+  // Metrics auto-refresh
+  if (metricsTimer) clearInterval(metricsTimer);
+  metricsTimer=setInterval(()=>{
+    if (document.getElementById('p-metrics')?.classList.contains('on')) loadMetrics();
+  },30000);
+}
+
+async function doLogout() {
+  if (SB) try { await SB.auth.signOut(); } catch(e){}
+  currentUser=null; currentRole='viewer'; isDemo=false;
+  if (metricsTimer) clearInterval(metricsTimer);
+  showLogin();
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function go(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
+  const pg=document.getElementById(id);
+  if (pg) pg.classList.add('on');
+  if (btn) btn.classList.add('on');
+  setTimeout(()=>renderPage(id), 80);
+}
+
+function navTo(section, btn) {
+  document.querySelectorAll('.tb-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const map={
+    dashboard:'p-dash', pricing:'p-pricing', bills:'p-bills-aws',
+    monitor:'p-metrics', finops:'p-finops', admin:'p-manage'
+  };
+  if (map[section]) go(map[section], null);
+}
+
+function renderPage(id) {
+  const fn={
+    'p-dash':renderDashboard,
+    'p-storage':()=>renderStorage('all'),
+    'p-network':()=>{ renderNetwork(); calcEgress(); },
+    'p-discount':()=>renderDiscount(),
+    'p-tco':calcTCO,
+    'p-migrate':buildMigrationUI,
+    'p-thai':renderThaiCards,
+    'p-resellers':()=>renderResellers('all'),
+    'p-datadog':ddRegen,
+    'p-upload':()=>{},
+    'p-pricing':renderPricing,
+    'p-compare':renderCompare,
+    'p-regional':renderRegional,
+    'p-bills-aws':loadAWSBills,
+    'p-bills-azure':loadAzureBills,
+    'p-bills-gcp':loadGCPBills,
+    'p-bills-local':renderLocalBills,
+    'p-metrics':loadMetrics,
+    'p-logs':loadLogs,
+    'p-apm':loadAPM,
+    'p-finops':renderFinops,
+    'p-calc':calcSavings,
+    'p-uih':renderUIH,
+    'p-optimizer':runOptimizer,
+    'p-alerts':renderAlerts,
+    'p-manage':renderManage,
+    'p-users':renderUsers,
+    'p-keys':renderKeyStatus,
+    'p-arules':renderAlertRules,
+  };
+  if (fn[id]) { try { fn[id](); } catch(e) { console.warn('Page render error:',id,e); } }
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+function renderDashboard() {
+  const totalThb=billsData.reduce((s,b)=>s+(b.thb||0),0);
+  const totalUsd=billsData.reduce((s,b)=>s+(b.usd||0),0)+3200+1100+890;
+  const triggered=alertRules.filter(a=>a.triggered).length;
+
+  // KPIs
+  const kpis=[
+    {l:'Total Spend/mo',v:'$'+Math.round(totalUsd).toLocaleString(),s:'All providers',tag:'LIVE',tc:'kt-green'},
+    {l:'Active Alerts',v:triggered,s:triggered+' ต้องการ action',tag:triggered?'⚠ ACTION':'',tc:'kt-amber'},
+    {l:'Pricing Records',v:pricingData.length,s:'ในฐานข้อมูล Supabase',tag:'',tc:''},
+    {l:'Local THB/mo',v:'฿'+totalThb.toLocaleString(),s:'UIH+NIPA+PROEN',tag:'',tc:''},
+    {l:'Providers',v:new Set(pricingData.map(p=>p.provider)).size,s:'Local+Global',tag:'',tc:''},
+  ];
+  const krow=document.getElementById('dash-kpis');
+  if (krow) krow.innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.l}</div><div class="kpi-val">${k.v}</div><div class="kpi-sub">${k.s}</div>${k.tag?`<span class="kpi-tag ${k.tc}">${k.tag}</span>`:''}</div>`).join('');
+
+  // Spend chart
+  mkChart('c-spend','doughnut',['AWS','Azure','GCP','Local Thai'],
+    [{data:[3200,1100,890,totalUsd-5190],backgroundColor:['#ff990099','#0078d499','#4285f499','#8b5cf699'],borderWidth:0,hoverOffset:4}],
+    {plugins:{legend:{position:'bottom'}},cutout:'65%'}
+  );
+
+  // Savings
+  const ds=document.getElementById('dash-savings');
+  if (ds) ds.innerHTML=[
+    {ic:'🏆',t:'Oracle Always Free',d:'4vCPU+24GB RAM ฟรีตลอดไป',s:'FREE'},
+    {ic:'💡',t:'Azure Arm (Ampere)',d:'ถูกกว่า x86 ถึง 65%',s:'ลด 65%'},
+    {ic:'⚡',t:'GCP SUD Auto',d:'~30% discount อัตโนมัติ ไม่ต้อง commit',s:'ลด 30%'},
+    {ic:'🌐',t:'Oracle Egress 10TB ฟรี',d:'ถูกกว่า AWS 92% สำหรับ high traffic',s:'ลด 92%'},
+    {ic:'🗺️',t:'Bangkok vs Singapore',d:'AWS Bangkok ถูกกว่า SG ~21%',s:'ลด 21%'},
+  ].map(r=>`<div style="display:flex;gap:.65rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--bdr)">
+    <span style="font-size:16px;flex-shrink:0">${r.ic}</span>
+    <div style="flex:1"><div style="font-size:12.5px;font-weight:600">${r.t}</div><div style="font-size:11px;color:var(--tx2)">${r.d}</div></div>
+    <span style="font-family:var(--mono);font-size:11.5px;color:var(--grn);white-space:nowrap;font-weight:700">${r.s}</span>
+  </div>`).join('');
+
+  // Alerts
+  const da=document.getElementById('dash-alerts');
+  if (da) {
+    const trig=alertRules.filter(a=>a.triggered);
+    da.innerHTML=trig.length?trig.map(a=>`<div style="display:flex;gap:.5rem;padding:.4rem .6rem;border-radius:6px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);margin-bottom:.35rem">
+      <span style="color:var(--red)">🔴</span>
+      <div><div style="font-size:12px;font-weight:600;color:var(--red)">${a.type.replace('_',' ').toUpperCase()}</div><div style="font-size:11px;color:var(--tx2)">${a.msg}</div></div>
+    </div>`).join(''):'<div style="font-size:12px;color:var(--grn)">✅ ไม่มี active alerts</div>';
+  }
+
+  // Pricing engine
+  const dp=document.getElementById('dash-pe');
+  if (dp) dp.innerHTML=[
+    {n:'AWS Pricing API',s:'live'},{n:'Azure Retail API',s:'live'},
+    {n:'GCP Billing Catalog',s:'live'},{n:'Oracle Pricing',s:'live'},
+    {n:'UIH (Manual)',s:'manual'},{n:'NIPA (Manual)',s:'manual'},
+    {n:'PROEN (Manual)',s:'manual'},{n:'NT (Manual)',s:'manual'},
+  ].map(r=>`<div class="pe-row ${r.s==='live'?'pe-live':'pe-manual'}">
+    <div class="pe-dot"></div>
+    <span style="flex:1;font-size:11.5px">${r.n}</span>
+    <span class="badge ${r.s==='live'?'b-auto':'b-manual'}" style="font-size:9px">${r.s==='live'?'AUTO API':'MANUAL'}</span>
+  </div>`).join('');
+
+  // Infra health
+  const di=document.getElementById('dash-infra');
+  const hosts=[
+    {n:'vm-prod-01',cpu:45,cloud:'aws',ok:true},
+    {n:'vm-prod-03',cpu:91,cloud:'aws',ok:false},
+    {n:'db-primary',cpu:62,cloud:'uih',ok:true},
+    {n:'api-gateway',cpu:38,cloud:'gcp',ok:true},
+    {n:'worker-01',cpu:25,cloud:'azure',ok:true},
+  ];
+  if (di) di.innerHTML=hosts.map(h=>`<div style="display:flex;align-items:center;gap:.5rem;font-size:12px;padding:.28rem 0;border-bottom:1px solid var(--bdr)">
+    <div style="width:7px;height:7px;border-radius:50%;background:${h.ok?'var(--grn)':'var(--red)'};flex-shrink:0"></div>
+    <span style="flex:1;font-family:var(--mono);font-size:11.5px">${h.n}</span>
+    ${pBadge(h.cloud.toUpperCase()===h.cloud?h.cloud:h.cloud.charAt(0).toUpperCase()+h.cloud.slice(1))}
+    <span style="font-family:var(--mono);font-size:11px;color:${h.cpu>80?'var(--red)':'var(--tx2)'}">${h.cpu}%</span>
+  </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// PRICING
+// ═══════════════════════════════════════════════════
+function setPF(f,btn){
+  pricingFilter=f;
+  document.querySelectorAll('#p-pricing .fc').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderPricing();
+}
+
+function renderPricing() {
+  const q=(document.getElementById('ps-q')?.value||'').toLowerCase();
+  const isAdmin=currentRole==='admin';
+  const th=document.getElementById('th-actions');
+  if (th) th.style.display=isAdmin?'table-cell':'none';
+
+  const catFilters=['compute','storage','network'];
+  const isCat=catFilters.includes(pricingFilter);
+  const data=pricingData.filter(r=>{
+    const provOk=(pricingFilter==='all'||isCat)?true:(r.provider===pricingFilter);
+    const catOk=isCat?(r.cat===pricingFilter):true;
+    const qOk=!q||r.provider.toLowerCase().includes(q)||r.name.toLowerCase().includes(q)||r.note?.toLowerCase().includes(q);
+    return provOk&&catOk&&qOk;
+  });
+
+  const minMo=Math.min(...data.filter(d=>d.od_mo>0).map(d=>d.od_mo));
+  const tbody=document.getElementById('pricing-tbody');
+  if (!tbody) return;
+  tbody.innerHTML=data.map(r=>{
+    const best=r.od_mo>0&&r.od_mo===minMo;
+    const free=r.od_mo===0;
+    const srcCls=r.source==='api'?'b-auto':'b-manual';
+    return `<tr>
+      <td>${pBadge(r.provider)}</td>
+      <td style="font-size:12px;max-width:180px">${r.name}</td>
+      <td class="num">${r.vcpu||'—'}</td>
+      <td class="num">${r.ram?r.ram+' GB':'—'}</td>
+      <td class="num">${r.od_hr?'$'+r.od_hr.toFixed(3):'—'}</td>
+      <td class="num ${best||free?'best':''}">${free?'🏆 FREE':r.od_mo?'$'+r.od_mo:'—'}</td>
+      <td class="num ${r.ri_mo&&r.ri_mo<70?'best':''}">${r.ri_mo?'$'+r.ri_mo:'—'}</td>
+      <td>${r.ri_pct!==null&&r.ri_pct!==undefined?`<span class="badge b-green">-${r.ri_pct}%</span>`:'—'}</td>
+      <td class="num">${r.thb?'฿'+r.thb.toLocaleString():'—'}</td>
+      <td><span class="badge ${srcCls}">${r.source==='api'?'API':'MANUAL'}</span></td>
+      <td style="font-size:10.5px;color:var(--tx3);font-family:var(--mono)">${r.updated||'—'}</td>
+      ${isAdmin?`<td><button class="btn btn-ghost btn-sm" onclick="editPricing(${r.id})" style="margin-right:.25rem">✏️</button><button class="btn btn-red btn-sm" onclick="delPricing(${r.id})">🗑</button></td>`:'<td></td>'}
+    </tr>`;
+  }).join('');
+
+  // Bar chart — compute only
+  const compute=data.filter(r=>r.cat==='compute'&&r.od_mo>0&&r.od_mo<400);
+  mkChart('c-pricing-bar','bar',
+    compute.map(r=>r.provider+' '+r.name.split(' ')[0]),
+    [{label:'OD/mo ($)',data:compute.map(r=>r.od_mo),backgroundColor:compute.map(r=>(PCOLOR[r.provider]||'#aaa')+'99'),borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v}}}}
+  );
+
+  const ls=document.getElementById('last-sync');
+  if (ls) ls.textContent='Last sync: '+new Date().toLocaleTimeString('th-TH');
+}
+
+async function syncPricing() {
+  toast('🔄 Syncing prices from APIs...');
+  // Update timestamps for API-sourced items (demo simulation)
+  pricingData=pricingData.map(p=>p.source==='api'?{...p,updated:new Date().toISOString().slice(0,10)}:p);
+  setTimeout(()=>{ toast('✅ Sync สำเร็จ '+pricingData.filter(p=>p.source==='api').length+' items'); renderPricing(); renderManage(); },1200);
+}
+
+function exportPricingCSV() {
+  const rows=[['Provider','Name','Cat','vCPU','RAM','OD/hr','OD/mo','RI/mo','RI%','THB','Region','Source','Updated'],...pricingData.map(p=>[p.provider,p.name,p.cat,p.vcpu,p.ram,p.od_hr,p.od_mo,p.ri_mo,p.ri_pct,p.thb||'',p.region,p.source,p.updated||''])];
+  const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cloudlens_pricing.csv';a.click();
+  toast('⬇ Downloaded pricing.csv');
+}
+
+function importPricingCSV() {
+  const input=document.createElement('input');input.type='file';input.accept='.csv';
+  input.onchange=e=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      const lines=ev.target.result.split('\n');
+      const hdrs=lines[0].split(',');
+      const imported=lines.slice(1).filter(l=>l.trim()).map((line,i)=>{
+        const v=line.split(',');
+        const obj=hdrs.reduce((o,h,j)=>({...o,[h.trim()]:v[j]?.trim()}),{});
+        return {...obj,id:Date.now()+i,source:'manual',updated:new Date().toISOString().slice(0,10)};
+      });
+      pricingData=[...pricingData,...imported];
+      toast('✓ Import '+imported.length+' records');
+      renderPricing();renderManage();
+    };
+    r.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+// Pricing CRUD
+function openAddPricing() {
+  document.getElementById('mp-id').value='';
+  document.getElementById('m-pricing-title').textContent='เพิ่ม Pricing ใหม่';
+  ['mp-name','mp-vcpu','mp-ram','mp-hr','mp-mo','mp-ri','mp-rip','mp-thb','mp-reg','mp-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  openModal('m-pricing');
+}
+
+function editPricing(id) {
+  const item=pricingData.find(p=>p.id===id);
+  if (!item) return;
+  document.getElementById('mp-id').value=id;
+  document.getElementById('m-pricing-title').textContent='แก้ไข — '+item.provider+' '+item.name;
+  document.getElementById('mp-prov').value=item.provider;
+  document.getElementById('mp-cat').value=item.cat||'compute';
+  document.getElementById('mp-name').value=item.name;
+  document.getElementById('mp-vcpu').value=item.vcpu||'';
+  document.getElementById('mp-ram').value=item.ram||'';
+  document.getElementById('mp-hr').value=item.od_hr||'';
+  document.getElementById('mp-mo').value=item.od_mo||'';
+  document.getElementById('mp-ri').value=item.ri_mo||'';
+  document.getElementById('mp-rip').value=item.ri_pct||'';
+  document.getElementById('mp-thb').value=item.thb||'';
+  document.getElementById('mp-reg').value=item.region||'';
+  document.getElementById('mp-note').value=item.note||'';
+  document.getElementById('mp-src').value=item.source||'manual';
+  openModal('m-pricing');
+}
+
+async function savePricing() {
+  const id=document.getElementById('mp-id').value;
+  const item={
+    provider:document.getElementById('mp-prov').value,
+    cat:document.getElementById('mp-cat').value,
+    name:document.getElementById('mp-name').value,
+    vcpu:+document.getElementById('mp-vcpu').value||null,
+    ram:+document.getElementById('mp-ram').value||null,
+    od_hr:+document.getElementById('mp-hr').value||null,
+    od_mo:+document.getElementById('mp-mo').value||null,
+    ri_mo:+document.getElementById('mp-ri').value||null,
+    ri_pct:+document.getElementById('mp-rip').value||null,
+    thb:+document.getElementById('mp-thb').value||null,
+    region:document.getElementById('mp-reg').value,
+    note:document.getElementById('mp-note').value,
+    source:document.getElementById('mp-src').value,
+    updated:new Date().toISOString().slice(0,10),
+  };
+  if (!item.name||!item.provider){toast('กรุณากรอก Provider และ Name','err');return;}
+  const res=await saveSB('pricing',item,id||null);
+  if (id) {
+    const idx=pricingData.findIndex(p=>p.id==id);
+    if (idx>=0) pricingData[idx]={...pricingData[idx],...item};
+  } else {
+    pricingData.push({...item,id:res.data?.[0]?.id||Date.now()});
+  }
+  closeModal('m-pricing');
+  toast('✓ บันทึกแล้ว'+(SB&&!isDemo?' ลง Supabase':''));
+  renderPricing();renderManage();
+}
+
+async function delPricing(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  await deleteSB('pricing',id);
+  pricingData=pricingData.filter(p=>p.id!==id);
+  toast('✓ ลบแล้ว');
+  renderPricing();renderManage();
+}
+
+// ═══════════════════════════════════════════════════
+// COMPARE
+// ═══════════════════════════════════════════════════
+function renderCompare() {
+  const vcpu=+document.getElementById('qv')?.value||4;
+  const ram=+document.getElementById('qr')?.value||16;
+  const model=document.getElementById('qm')?.value||'od';
+  const rmult=+document.getElementById('qreg')?.value||.907;
+  const key=model==='od'?'od_mo':'ri_mo';
+
+  const matched=pricingData.filter(p=>p.cat==='compute'&&(p.vcpu===vcpu||!p.vcpu)&&(p.ram>=ram||!p.ram));
+  const best={};
+  matched.forEach(p=>{
+    const price=(p[key]||p.od_mo||0)*rmult;
+    if (!best[p.provider]||price<best[p.provider].price) best[p.provider]={...p,price};
+  });
+  const sorted=Object.values(best).sort((a,b)=>a.price-b.price);
+  const minP=sorted[0]?.price||0;
+
+  const cards=document.getElementById('compare-cards');
+  if (cards) cards.innerHTML=sorted.map((c,i)=>`
+    <div class="card" style="${i===0?'border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)':''}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.6rem">
+        ${pBadge(c.provider)}
+        ${i===0?'<span class="badge b-green">🏆 Best</span>':''}
+      </div>
+      <div style="font-family:var(--dis);font-size:23px;font-weight:800;color:${i===0?'var(--grn)':'var(--tx)'};letter-spacing:-.04em">${c.price===0?'FREE':'$'+c.price.toFixed(0)}</div>
+      <div style="font-size:10.5px;color:var(--tx3);margin-top:.2rem">/mo · ${vcpu}vCPU/${ram}GB</div>
+      <div style="font-size:11px;color:var(--tx2);margin-top:.4rem">${c.name}</div>
+      ${c.thb?`<div style="font-size:10px;color:var(--vio);font-family:var(--mono)">฿${c.thb.toLocaleString()}/mo</div>`:''}
+    </div>`).join('');
+
+  mkChart('c-compare','bar',sorted.map(c=>c.provider),
+    [{label:'$/mo',data:sorted.map(c=>c.price),backgroundColor:sorted.map(c=>(PCOLOR[c.provider]||'#aaa')+'99'),borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v===0?'FREE':'$'+v}}}}
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// REGIONAL
+// ═══════════════════════════════════════════════════
+function renderRegional() {
+  const tbody=document.getElementById('regional-tbody');
+  if (tbody) tbody.innerHTML=REGIONS.map(r=>{
+    const od=(140*r.mult).toFixed(0);
+    const ri=(89*r.mult).toFixed(0);
+    const diff=r.mult===1?'Base':r.mult<1?'-'+Math.round((1-r.mult)*100)+'%':'+'+Math.round((r.mult-1)*100)+'%';
+    const badge=r.mult===1?'b-amber':r.mult<1?'b-green':'b-red';
+    return `<tr>
+      <td style="font-weight:600">${r.name}</td>
+      <td style="font-size:11px;color:var(--tx3);font-family:var(--mono)">${r.code}</td>
+      <td><span class="badge b-gray">${r.zone}</span></td>
+      <td class="num ${r.mult<1?'best':r.mult>1.3?'worst':''}">~$${od}</td>
+      <td class="num">~$${ri}</td>
+      <td><span class="badge ${badge}">${diff}</span></td>
+      <td style="font-size:11px;color:var(--tx2)">${r.note||''}</td>
+    </tr>`;
+  }).join('');
+
+  // Provider Regional comparison table
+  const ptbody=document.getElementById('provider-regional-tbody');
+  if (ptbody) {
+    const rows=[
+      {p:'AWS',cls:'b-aws',prog:'Reserved Instance',us:'~$89',eu:'~$98',sg:'~$108',bkk:'~$81',move:'❌ ย้าย region ไม่ได้',note:'ใช้ Savings Plans แทน'},
+      {p:'AWS',cls:'b-aws',prog:'Savings Plans',us:'~$95',eu:'~$105',sg:'~$115',bkk:'~$86',move:'✅ ย้าย instance ได้',note:'ยืดหยุ่นกว่า RI'},
+      {p:'Azure',cls:'b-azure',prog:'Reserved VM',us:'~$84',eu:'~$92',sg:'~$101',bkk:'~$76',move:'✅ ย้าย region + ขายคืน',note:'ยืดหยุ่นที่สุด'},
+      {p:'GCP',cls:'b-gcp',prog:'CUD 1-yr',us:'~$79',eu:'~$87',sg:'~$95',bkk:'~$72',move:'❌',note:'Discount สูงสุด 57%'},
+      {p:'GCP',cls:'b-gcp',prog:'SUD (Auto)',us:'~$97',eu:'~$107',sg:'~$117',bkk:'~$88',move:'✅ Auto',note:'ไม่ต้อง commit'},
+      {p:'Oracle',cls:'b-oracle',prog:'PAYG',us:'~$93',eu:'~$102',sg:'~$112',bkk:'~$84',move:'✅',note:'Base price ถูกสุด'},
+      {p:'DigitalOcean',cls:'b-do',prog:'Fixed',us:'~$63',eu:'~$63',sg:'~$71',bkk:'~$58',move:'✅ Flat',note:'ราคาชัดเจน'},
+    ];
+    ptbody.innerHTML=rows.map(r=>`<tr>
+      <td><span class="badge ${r.cls}">${r.p}</span></td>
+      <td style="font-size:11.5px">${r.prog}</td>
+      <td class="num">${r.us}</td>
+      <td class="num">${r.eu}</td>
+      <td class="num">${r.sg}</td>
+      <td class="num best">${r.bkk}</td>
+      <td style="font-size:11px;color:${r.move.includes('✅')?'var(--grn)':'var(--tx3)'}">${r.move}</td>
+      <td style="font-size:11px;color:var(--tx2)">${r.note}</td>
+    </tr>`).join('');
+  }
+
+  mkChart('c-regional','bar',REGIONS.map(r=>r.name.split(' ')[0]),
+    [{label:'Price Index (US-East=100)',data:REGIONS.map(r=>Math.round(r.mult*100)),
+      backgroundColor:REGIONS.map(r=>r.mult<1?'#10b98199':r.mult>1.3?'#ef444499':'#3b82f699'),borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'},title:{display:true,text:'US-East = 100',color:'#3d5573'}}}}
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// BILLS
+// ═══════════════════════════════════════════════════
+function loadAWSBills() {
+  const kpis=[
+    {l:'Total This Month',v:'$3,200',s:'AWS Dec 2025',col:'var(--blu)'},
+    {l:'vs Last Month',v:'+8%',s:'+$240',col:'var(--amb)'},
+    {l:'Top Service',v:'EC2',s:'$1,850 (58%)',col:'var(--grn)'},
+    {l:'Forecast EOY',v:'$3,450',s:'Projected',col:'var(--vio)'},
+  ];
+  const krow=document.getElementById('aws-kpis');
+  if (krow) krow.innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.l}</div><div class="kpi-val" style="color:${k.col}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+  const svcs=['EC2','RDS','S3','CloudFront','Lambda','Other'];
+  const amts=[1850,580,230,280,160,100];
+  mkChart('c-aws-pie','doughnut',svcs,[{data:amts,backgroundColor:['#ff990099','#0078d499','#4285f499','#06b6d499','#8b5cf699','#1e3050'],borderWidth:0,hoverOffset:4}],{plugins:{legend:{position:'bottom'}},cutout:'58%'});
+  mkChart('c-aws-trend','bar',['Aug','Sep','Oct','Nov','Dec','Jan'],[{label:'Cost ($)',data:[2800,3100,2900,2960,3200,3450],backgroundColor:'#ff990044',borderColor:'#ff9900',borderWidth:1}],{plugins:{legend:{display:false}}});
+  const rows=document.getElementById('aws-rows');
+  if (rows) rows.innerHTML=svcs.map((s,i)=>`<div style="display:flex;align-items:center;gap:.65rem;padding:.45rem .75rem;border-bottom:1px solid var(--bdr);font-size:12.5px">
+    ${pBadge('AWS')}<span style="flex:1;font-weight:500">${s}</span>
+    <span style="font-family:var(--mono);font-weight:600">$${amts[i].toLocaleString()}</span>
+    <span style="font-family:var(--mono);font-size:11px;color:${i<2?'var(--red)':'var(--tx3)'}">+${5+i*2}%</span>
+  </div>`).join('');
+}
+
+function loadAzureBills() {
+  const kpis=[{l:'Total/mo',v:'$1,100',s:'Azure Jan 2026',col:'var(--blu)'},{l:'vs Last',v:'+5%',s:'+$52',col:'var(--amb)'},{l:'Top',v:'VMs',s:'$720 (65%)',col:'var(--grn)'},{l:'Forecast',v:'$1,200',s:'EOY',col:'var(--vio)'}];
+  document.getElementById('azure-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.l}</div><div class="kpi-val" style="color:${k.col}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+  mkChart('c-azure-trend','bar',['Aug','Sep','Oct','Nov','Dec','Jan'],[{label:'Azure Cost ($)',data:[950,1020,980,1048,1100,1200],backgroundColor:'#0078d444',borderColor:'#0078d4',borderWidth:1}],{plugins:{legend:{display:false}}});
+}
+
+function loadGCPBills() {
+  const kpis=[{l:'Total/mo',v:'$890',s:'GCP Jan 2026',col:'var(--blu)'},{l:'vs Last',v:'+3%',s:'+$26',col:'var(--amb)'},{l:'Top',v:'Compute',s:'$560 (63%)',col:'var(--grn)'},{l:'Forecast',v:'$950',s:'EOY',col:'var(--vio)'}];
+  document.getElementById('gcp-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.l}</div><div class="kpi-val" style="color:${k.col}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+  mkChart('c-gcp-trend','bar',['Aug','Sep','Oct','Nov','Dec','Jan'],[{label:'GCP Cost ($)',data:[780,820,850,864,890,950],backgroundColor:'#4285f444',borderColor:'#4285f4',borderWidth:1}],{plugins:{legend:{display:false}}});
+}
+
+function renderLocalBills() {
+  const total_thb=billsData.reduce((s,b)=>s+(b.thb||0),0);
+  const total_usd=billsData.reduce((s,b)=>s+(b.usd||0),0);
+  const krow=document.getElementById('local-kpis');
+  if (krow) krow.innerHTML=[
+    {l:'รวม THB/mo',v:'฿'+total_thb.toLocaleString(),s:'All local providers',col:'var(--vio)'},
+    {l:'รวม USD/mo',v:'$'+total_usd.toFixed(0),s:'Exchange 1:35',col:'var(--blu)'},
+    {l:'Invoices',v:billsData.length,s:'Records',col:'var(--grn)'},
+    {l:'Providers',v:new Set(billsData.map(b=>b.provider)).size,s:'Active',col:'var(--amb)'},
+  ].map(k=>`<div class="kpi"><div class="kpi-lbl">${k.l}</div><div class="kpi-val" style="color:${k.col}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+
+  const tbody=document.getElementById('local-tbody');
+  if (tbody) tbody.innerHTML=billsData.map(b=>`<tr>
+    <td>${pBadge(b.provider)}</td>
+    <td style="font-family:var(--mono)">${b.month}</td>
+    <td>${b.item}</td>
+    <td class="num" style="color:var(--vio)">฿${(b.thb||0).toLocaleString()}</td>
+    <td class="num">$${(b.usd||0).toFixed(0)}</td>
+    <td style="font-size:11px;color:var(--tx2)">${b.note||'—'}</td>
+    <td>${currentRole==='admin'?`<button class="btn btn-red btn-sm" onclick="delBill(${b.id})">🗑</button>`:'—'}</td>
+  </tr>`).join('');
+}
+
+function mb_thb(){
+  const t=+document.getElementById('mb-thb')?.value||0;
+  const r=+document.getElementById('mb-rate')?.value||35;
+  document.getElementById('mb-usd').value=(t/r).toFixed(0);
+}
+
+async function saveBill() {
+  const item={
+    id:Date.now(),
+    provider:document.getElementById('mb-prov').value,
+    month:document.getElementById('mb-month').value,
+    item:document.getElementById('mb-item').value,
+    thb:+document.getElementById('mb-thb').value||0,
+    usd:+document.getElementById('mb-usd').value||0,
+    note:document.getElementById('mb-note').value,
+  };
+  if (!item.item){toast('กรุณากรอกรายการ','err');return;}
+  const res=await saveSB('local_bills',item,null);
+  if (res.data?.[0]) item.id=res.data[0].id;
+  billsData.unshift(item);
+  closeModal('m-bill');
+  toast('✓ บันทึก invoice แล้ว');
+  renderLocalBills();renderDashboard();
+}
+
+async function delBill(id){
+  if(!confirm('ลบรายการนี้?'))return;
+  await deleteSB('local_bills',id);
+  billsData=billsData.filter(b=>b.id!==id);
+  toast('✓ ลบแล้ว');renderLocalBills();
+}
+
+function importBillCSV(file){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const lines=e.target.result.split('\n');
+    const hdrs=lines[0].split(',');
+    const imported=lines.slice(1).filter(l=>l.trim()).map((line,i)=>{
+      const v=line.split(',');
+      const o=hdrs.reduce((obj,h,j)=>({...obj,[h.trim()]:v[j]?.trim()}),{});
+      return {...o,id:Date.now()+i,usd:(+o.thb||0)/35};
+    });
+    billsData=[...imported,...billsData];
+    toast('✓ Import '+imported.length+' records');renderLocalBills();
+  };
+  r.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════
+// MONITORING
+// ═══════════════════════════════════════════════════
+function setMF(f,btn){metricsFilter=f;document.querySelectorAll('#p-metrics .fc').forEach(b=>b.classList.remove('on'));btn.classList.add('on');loadMetrics();}
+
+function loadMetrics() {
+  const ts=document.getElementById('metrics-ts');
+  if(ts)ts.textContent='Updated: '+new Date().toLocaleTimeString('th-TH');
+  const HOSTS=[
+    {n:'vm-prod-01',cloud:'aws',cpu:45,mem:62,disk:38,net:12,ok:true},
+    {n:'vm-prod-02',cloud:'aws',cpu:67,mem:78,disk:45,net:23,ok:true},
+    {n:'vm-prod-03',cloud:'aws',cpu:91,mem:85,disk:52,net:34,ok:false},
+    {n:'db-primary',cloud:'uih',cpu:62,mem:88,disk:71,net:8,ok:true},
+    {n:'api-gateway',cloud:'gcp',cpu:38,mem:45,disk:22,net:56,ok:true},
+    {n:'worker-01',cloud:'azure',cpu:25,mem:34,disk:18,net:5,ok:true},
+    {n:'cache-01',cloud:'uih',cpu:15,mem:92,disk:12,net:4,ok:true},
+    {n:'k8s-node-01',cloud:'aws',cpu:73,mem:68,disk:40,net:89,ok:true},
+  ].filter(h=>metricsFilter==='all'||h.cloud===metricsFilter);
+
+  const grid=document.getElementById('metrics-grid');
+  if(grid)grid.innerHTML=HOSTS.map(h=>{
+    const cc=h.cpu>80?'var(--red)':h.cpu>60?'var(--amb)':'var(--grn)';
+    return `<div class="mc" style="--accent:${cc}">
+      <div class="mc-name">${h.n} ${pBadge(h.cloud.charAt(0).toUpperCase()+h.cloud.slice(1))}</div>
+      <div class="mc-val" style="color:${cc}">${h.cpu}<span style="font-size:12px;color:var(--tx3)">%</span></div>
+      <div style="font-size:10px;color:var(--tx3);font-family:var(--mono);margin-bottom:.3rem">CPU</div>
+      <div class="mc-bar"><div class="mc-bar-fill" style="width:${h.cpu}%"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.25rem;margin-top:.45rem;font-size:10.5px;font-family:var(--mono)">
+        <div style="color:var(--tx3)">MEM <span style="color:var(--tx)">${h.mem}%</span></div>
+        <div style="color:var(--tx3)">DISK <span style="color:var(--tx)">${h.disk}%</span></div>
+        <div style="color:var(--tx3)">NET <span style="color:var(--tx)">${h.net}MB</span></div>
+        <div style="color:${h.ok?'var(--grn)':'var(--red)'}">${h.ok?'● OK':'⚠ WARN'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const labels=['10m','8m','6m','4m','2m','Now'];
+  const cpuDs=HOSTS.slice(0,4).map(h=>({
+    label:h.n,data:labels.map(()=>Math.max(5,h.cpu+Math.round((Math.random()-.5)*12))),
+    borderColor:({aws:'#ff9900',azure:'#0078d4',gcp:'#4285f4',uih:'#8b5cf6'}[h.cloud]||'#aaa'),
+    fill:false,tension:.4,pointRadius:0,borderWidth:1.5
+  }));
+  mkChart('c-cpu','line',labels,cpuDs,{plugins:{legend:{position:'bottom'}},scales:{y:{max:100,ticks:{callback:v=>v+'%'}}}});
+  mkChart('c-mem','line',labels,HOSTS.slice(0,4).map(h=>({
+    label:h.n,data:labels.map(()=>Math.max(10,h.mem+Math.round((Math.random()-.5)*8))),
+    borderColor:({aws:'#ff9900',azure:'#0078d4',gcp:'#4285f4',uih:'#8b5cf6'}[h.cloud]||'#aaa'),
+    fill:false,tension:.4,pointRadius:0,borderWidth:1.5
+  })),{plugins:{legend:{position:'bottom'}},scales:{y:{max:100,ticks:{callback:v=>v+'%'}}}});
+}
+
+function loadLogs() {
+  const LOGS=[
+    {ts:'12:34:01',lv:'ERROR',svc:'api-gateway',host:'vm-prod-03',msg:'Connection timeout to database after 30s'},
+    {ts:'12:33:58',lv:'WARN',svc:'web-app',host:'vm-prod-01',msg:'Memory usage exceeded 80% threshold'},
+    {ts:'12:33:45',lv:'INFO',svc:'worker',host:'worker-01',msg:'Job queue processed 150 items successfully'},
+    {ts:'12:33:30',lv:'ERROR',svc:'db-service',host:'db-primary',msg:'Slow query detected: 8.2s (threshold: 2s)'},
+    {ts:'12:33:12',lv:'INFO',svc:'api-gateway',host:'vm-prod-02',msg:'Health check passed — all services online'},
+    {ts:'12:32:58',lv:'DEBUG',svc:'cache',host:'cache-01',msg:'Cache hit ratio: 94.2%'},
+    {ts:'12:32:44',lv:'WARN',svc:'k8s',host:'k8s-node-01',msg:'Pod restarts: api-deployment-7d9f (3 restarts)'},
+    {ts:'12:32:31',lv:'INFO',svc:'billing',host:'worker-01',msg:'UIH billing synced: 6 VMs, ฿72,000/mo'},
+  ];
+  const lvColor={ERROR:'var(--red)',WARN:'var(--amb)',INFO:'var(--grn)',DEBUG:'var(--tx3)'};
+  const q=(document.getElementById('log-q')?.value||'').toLowerCase();
+  const lvf=document.getElementById('log-lvl')?.value||'';
+  const filtered=LOGS.filter(l=>(!q||l.msg.toLowerCase().includes(q)||l.svc.includes(q))&&(!lvf||l.lv.toLowerCase()===lvf));
+  const el=document.getElementById('log-stream');
+  if(el)el.innerHTML=filtered.map(l=>`<div class="log-line">
+    <span style="color:var(--tx3);min-width:65px">${l.ts}</span>
+    <span style="color:${lvColor[l.lv]};min-width:52px;font-weight:700">${l.lv}</span>
+    <span style="color:var(--blu);min-width:95px">${l.svc}</span>
+    <span style="color:var(--tx3);min-width:85px">${l.host}</span>
+    <span style="color:var(--tx2)">${l.msg}</span>
+  </div>`).join('');
+}
+
+function loadAPM() {
+  const kpis=[
+    {l:'P99 Latency',v:'245ms',s:'api-gateway',col:'var(--blu)'},
+    {l:'Error Rate',v:'0.8%',s:'Last 1hr',col:'var(--grn)'},
+    {l:'Throughput',v:'1,240',s:'req/min',col:'var(--cyn)'},
+    {l:'Apdex Score',v:'0.94',s:'Very Good',col:'var(--grn)'},
+  ];
+  const krow=document.getElementById('apm-kpis');
+  if(krow)krow.innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.l}</div><div class="kpi-val" style="color:${k.col}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+  const svcs=['api-gateway','web-app','db-service','worker','cache'];
+  mkChart('c-latency','bar',svcs,[{label:'P99 ms',data:[245,180,820,95,12],backgroundColor:'#3b82f699',borderWidth:0}],{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'ms'}}}});
+  mkChart('c-errors','bar',svcs,[{label:'Error %',data:[0.8,0.2,1.4,0.1,0],backgroundColor:svcs.map((_,i)=>[0.8,0.2,1.4,0.1,0][i]>1?'#ef444499':'#10b98199'),borderWidth:0}],{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}});
+}
+
+// ═══════════════════════════════════════════════════
+// FINOPS
+// ═══════════════════════════════════════════════════
+function setFF(f,btn){finopsFilter=f;document.querySelectorAll('#p-finops .fc').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderFinops();}
+
+function renderFinops() {
+  const data=finopsFilter==='all'?FINOPS_TACTICS:FINOPS_TACTICS.filter(r=>r.pri===finopsFilter);
+  const tbody=document.getElementById('finops-tbody');
+  if(!tbody)return;
+  tbody.innerHTML=data.map(r=>`<tr>
+    <td style="font-weight:600;font-size:12.5px">${r.t}</td>
+    <td><span class="badge ${r.pct>60?'b-green':r.pct>30?'b-amber':'b-gray'}">${r.save}</span></td>
+    <td style="font-size:11.5px">${r.diff}</td>
+    <td style="font-size:11px;color:${r.aws.includes('✅')?'var(--grn)':r.aws.includes('❌')?'var(--red)':'var(--tx2)'}">${r.aws}</td>
+    <td style="font-size:11px;color:${r.azure.includes('✅')?'var(--grn)':r.azure.includes('❌')?'var(--red)':'var(--tx2)'}">${r.azure}</td>
+    <td style="font-size:11px;color:${r.gcp.includes('✅')?'var(--grn)':r.gcp.includes('❌')?'var(--red)':'var(--tx2)'}">${r.gcp}</td>
+    <td style="font-size:11px;color:${r.ora.includes('✅')?'var(--grn)':r.ora.includes('❌')?'var(--red)':'var(--tx2)'}">${r.ora}</td>
+    <td><span class="badge ${r.pri==='HIGH'?'b-red':'b-amber'}">${r.pri}</span></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// SAVINGS CALCULATOR
+// ═══════════════════════════════════════════════════
+function calcSavings() {
+  const g=id=>+document.getElementById(id)?.value||0;
+  const c=g('fc-c'),s=g('fc-s'),e=g('fc-e'),d=g('fc-d'),sv=g('fc-sv'),o=g('fc-o');
+  const total=c+s+e+d+sv+o;
+  document.getElementById('fc-total').textContent='$'+total.toLocaleString();
+  document.getElementById('fc-yr').textContent='= $'+(total*12).toLocaleString()+'/ปี';
+
+  const tactics=[
+    {n:'Reserved/CUD 1-yr',rate:.36,base:c,pri:'HIGH'},
+    {n:'Spot (20%)',rate:.70,base:c*.2,pri:'HIGH'},
+    {n:'Switch to Cheapest',rate:.25,base:c,pri:'HIGH'},
+    {n:'Arm CPU (50%)',rate:.30,base:c*.5,pri:'HIGH'},
+    {n:'Storage Lifecycle',rate:.40,base:s,pri:'HIGH'},
+    {n:'Egress → Oracle/DO',rate:.80,base:e,pri:'HIGH'},
+    {n:'DB Rightsizing',rate:.20,base:d,pri:'MED'},
+    {n:'Idle Cleanup',rate:.15,base:total,pri:'HIGH'},
+  ];
+
+  const rows=document.getElementById('fc-rows');
+  if(rows)rows.innerHTML=tactics.map(t=>{
+    const saved=t.base*t.rate;
+    const bw=total>0?Math.min(saved/total*200,100):0;
+    return `<div class="sv-row">
+      <div style="font-size:12px;font-weight:500">${t.n}</div>
+      <div><span class="badge ${t.pri==='HIGH'?'b-red':'b-amber'}" style="font-size:9px">${t.pri}</span></div>
+      <div class="progress"><div class="pf" style="width:${bw}%;background:var(--grn)"></div></div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--grn);text-align:right;font-weight:600">-$${saved.toFixed(0)}</div>
+    </div>`;
+  }).join('');
+
+  const totalSaved=tactics.reduce((sum,t)=>sum+t.base*t.rate,0)*.6;
+  const after=total-totalSaved;
+  const rate=total>0?(totalSaved/total*100).toFixed(0):0;
+  document.getElementById('fc-saved').textContent='~$'+totalSaved.toFixed(0)+'/mo';
+  document.getElementById('fc-yr-s').textContent='$'+(totalSaved*12).toFixed(0);
+  document.getElementById('fc-rate').textContent=rate+'%';
+  document.getElementById('fc-after').textContent='$'+after.toFixed(0);
+  mkChart('c-savings','doughnut',['ประหยัดได้','ยังคงจ่าย'],[{data:[totalSaved,after],backgroundColor:['#10b981','#172540'],borderWidth:0}],{plugins:{legend:{position:'bottom'}},cutout:'60%'});
+}
+
+// ═══════════════════════════════════════════════════
+// UIH
+// ═══════════════════════════════════════════════════
+function renderUIH() {
+  const tbody=document.getElementById('uih-tbody');
+  if(!tbody)return;
+  tbody.innerHTML=UIH_COMPARE.map(r=>{
+    const cheapest=Math.min(r.aws,r.az,r.gcp,r.ora,r.do);
+    return `<tr>
+      <td style="font-weight:600">${r.spec}</td>
+      <td class="num" style="color:var(--vio)">฿${r.thb.toLocaleString()}</td>
+      <td class="num" style="color:var(--vio)">~$${r.usd}</td>
+      <td class="num ${r.aws===cheapest?'best':''}">~$${r.aws}</td>
+      <td class="num ${r.az===cheapest?'best':''}">~$${r.az}</td>
+      <td class="num ${r.gcp===cheapest?'best':''}">~$${r.gcp}</td>
+      <td class="num ${r.ora===cheapest?'best':''}">~$${r.ora}</td>
+      <td class="num ${r.do===cheapest?'best':''}">~$${r.do}</td>
+      <td><span class="badge b-red">+${Math.round((r.usd-r.aws)/r.aws*100)}%</span></td>
+    </tr>`;
+  }).join('');
+  mkChart('c-uih','bar',UIH_COMPARE.map(r=>r.spec),
+    [{label:'UIH',data:UIH_COMPARE.map(r=>r.usd),backgroundColor:'#8b5cf699',borderWidth:0},
+     {label:'AWS BKK',data:UIH_COMPARE.map(r=>r.aws),backgroundColor:'#ff990099',borderWidth:0},
+     {label:'Oracle',data:UIH_COMPARE.map(r=>r.ora),backgroundColor:'#ef444499',borderWidth:0}],
+    {scales:{y:{ticks:{callback:v=>'$'+v}}}}
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// OPTIMIZER
+// ═══════════════════════════════════════════════════
+function runOptimizer() {
+  const vcpu=+document.getElementById('opt-v')?.value||4;
+  const ram=+document.getElementById('opt-r')?.value||16;
+  const pdpa=document.getElementById('opt-p')?.value==='yes';
+  const traffic=document.getElementById('opt-tr')?.value||'steady';
+  const key=traffic==='steady'?'ri_mo':'od_mo';
+
+  let candidates=pricingData.filter(p=>p.cat==='compute'&&(p.vcpu===vcpu||!p.vcpu)&&(p.ram>=ram||!p.ram));
+  if (pdpa) candidates=candidates.filter(p=>['UIH','NIPA','PROEN','NT','TrueIDC'].includes(p.provider));
+  const sorted=candidates.sort((a,b)=>(a[key]||a.od_mo||999)-(b[key]||b.od_mo||999)).slice(0,5);
+
+  const el=document.getElementById('opt-results');
+  if(!el)return;
+  el.innerHTML=sorted.map((c,i)=>`
+    <div style="display:flex;gap:.75rem;border:1px solid ${i===0?'rgba(16,185,129,.35)':'var(--bdr)'};border-radius:10px;padding:.75rem 1rem;background:${i===0?'rgba(16,185,129,.04)':''};margin-bottom:.5rem">
+      <div style="font-family:var(--dis);font-size:18px;font-weight:800;color:${i===0?'var(--grn)':'var(--tx3)'}">${i+1}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem">
+          ${pBadge(c.provider)}<span style="font-size:12.5px;font-weight:600">${c.name}</span>
+          ${i===0?'<span class="badge b-green" style="font-size:9px">BEST</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--tx2)">${c.note||c.region||''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--mono);font-weight:700;color:${(c[key]||c.od_mo||0)===0?'var(--grn)':'var(--tx)'};">${(c[key]||c.od_mo||0)===0?'FREE':'$'+(c[key]||c.od_mo||0)+'/mo'}</div>
+        ${c.thb?`<div style="font-size:10px;color:var(--vio);font-family:var(--mono)">฿${c.thb.toLocaleString()}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════
+function renderAlerts() {
+  const el=document.getElementById('alerts-list');
+  if(!el)return;
+  const trig=alertRules.filter(a=>a.triggered);
+  el.innerHTML=trig.length?trig.map(a=>`<div class="al-card triggered">
+    <span style="font-size:18px">🔴</span>
+    <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--red)">${a.type.replace(/_/g,' ').toUpperCase()}</div><div style="font-size:11.5px;color:var(--tx2);margin-top:.15rem">${a.msg}</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="ackAlert(${a.id})">Acknowledge</button>
+  </div>`).join(''):'<div class="info info-green"><span>✅</span>ไม่มี active alerts ขณะนี้</div>';
+}
+
+function ackAlert(id) {
+  const a=alertRules.find(r=>r.id===id);
+  if(a){a.triggered=false;toast('✓ Acknowledged');renderAlerts();renderDashboard();document.getElementById('alert-cnt').textContent=alertRules.filter(x=>x.triggered).length;}
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN: MANAGE PRICING
+// ═══════════════════════════════════════════════════
+function renderManage() {
+  const grid=document.getElementById('manage-grid');
+  if(!grid)return;
+  const providers=[...new Set(pricingData.map(p=>p.provider))];
+  grid.innerHTML=providers.map(prov=>{
+    const items=pricingData.filter(p=>p.provider===prov);
+    const isManual=['UIH','NIPA','PROEN','NT','TrueIDC','INET'].includes(prov);
+    return `<div class="card">
+      <div style="display:flex;align-items:center;gap:.5rem;padding-bottom:.65rem;border-bottom:1px solid var(--bdr);margin-bottom:.65rem">
+        ${pBadge(prov)}
+        <span class="badge ${isManual?'b-manual':'b-auto'}" style="margin-left:auto">${isManual?'MANUAL':'AUTO API'}</span>
+        ${!isManual?`<button class="btn btn-grn btn-sm" onclick="syncPricing()">🔄</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="openAddForProv('${prov}')">+</button>
+      </div>
+      ${items.slice(0,4).map(item=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.32rem 0;border-bottom:1px solid var(--bdr)">
+        <span style="flex:1;font-size:12px;color:var(--tx2)">${item.name}</span>
+        <span style="font-family:var(--mono);font-size:11.5px">${item.od_mo?'$'+item.od_mo:item.thb?'฿'+item.thb.toLocaleString():'Free'}</span>
+        <button onclick="editPricing(${item.id})" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:13px">✏️</button>
+      </div>`).join('')}
+      ${items.length>4?`<div style="font-size:11px;color:var(--tx3);padding:.3rem 0">+${items.length-4} more</div>`:''}
+      <div style="font-size:10px;color:var(--tx3);font-family:var(--mono);padding-top:.5rem;border-top:1px solid var(--bdr);margin-top:.4rem">Updated: ${items[0]?.updated||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function openAddForProv(prov) {
+  openAddPricing();
+  document.getElementById('mp-prov').value=prov;
+  document.getElementById('mp-src').value=['UIH','NIPA','PROEN','NT','TrueIDC','INET'].includes(prov)?'manual':'api';
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN: USERS
+// ═══════════════════════════════════════════════════
+function renderUsers() {
+  const el=document.getElementById('user-list');
+  if(!el)return;
+  el.innerHTML=usersData.map(u=>`<div style="display:grid;grid-template-columns:1fr 120px 130px 80px;gap:.75rem;padding:.6rem .85rem;border-bottom:1px solid var(--bdr);align-items:center">
+    <div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div style="width:28px;height:28px;border-radius:50%;background:${u.color||'#3b82f6'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${(u.name||u.email)[0].toUpperCase()}</div>
+        <div><div style="font-weight:600;font-size:12.5px">${u.name||u.email}</div><div style="font-size:11px;color:var(--tx2)">${u.email}</div></div>
+      </div>
+    </div>
+    <div><span class="role-pill ${u.role==='admin'?'rp-admin':'rp-viewer'}">${u.role?.toUpperCase()}</span></div>
+    <div style="font-size:11px;color:var(--tx3);font-family:var(--mono)">${u.last||'—'}</div>
+    <div style="display:flex;gap:.3rem">
+      <button class="btn btn-ghost btn-sm" onclick="toggleRole(${u.id})">Toggle</button>
+      <button class="btn btn-red btn-sm" onclick="removeUser(${u.id})">✕</button>
+    </div>
+  </div>`).join('');
+}
+
+function toggleRole(id){const u=usersData.find(u=>u.id===id);if(u){u.role=u.role==='admin'?'viewer':'admin';toast('✓ Role → '+u.role);renderUsers();}}
+function removeUser(id){if(!confirm('ลบ user?'))return;usersData=usersData.filter(u=>u.id!==id);toast('✓ ลบแล้ว');renderUsers();}
+
+async function inviteUser(){
+  const email=document.getElementById('inv-email').value.trim();
+  const name=document.getElementById('inv-name').value.trim()||email.split('@')[0];
+  const role=document.getElementById('inv-role').value;
+  if(!email){toast('กรุณากรอก Email','err');return;}
+  const newUser={id:Date.now(),email,name,role,last:'Never',color:role==='admin'?'#f59e0b':'#3b82f6'};
+  await saveSB('user_roles',{email,name,role},null);
+  usersData.push(newUser);
+  closeModal('m-invite');
+  toast('✓ Invited '+email);
+  renderUsers();
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN: API KEYS
+// ═══════════════════════════════════════════════════
+function renderKeyStatus(){
+  const el=document.getElementById('key-status');
+  if(!el)return;
+  const items=[
+    {n:'AWS Cost Explorer',k:'aws',ic:'🟠'},
+    {n:'Azure Cost Management',k:'azure',ic:'🔵'},
+    {n:'GCP Billing',k:'gcp',ic:'🟢'},
+    {n:'Datadog',k:'datadog',ic:'🐶'},
+    {n:'Claude AI',k:'claude',ic:'🤖'},
+  ];
+  const saved=JSON.parse(localStorage.getItem('api_key_status')||'{}');
+  el.innerHTML=items.map(({n,k,ic})=>{
+    const status=saved[k]||'not_set';
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:1px solid var(--bdr)">
+      <span>${ic}</span><span style="flex:1;font-size:12px">${n}</span>
+      <span class="badge ${status==='ok'?'b-green':status==='err'?'b-red':'b-gray'}">${status==='ok'?'✓ Connected':status==='err'?'✗ Error':'Not Set'}</span>
+    </div>`;
+  }).join('');
+}
+
+function saveKey(provider){
+  toast('🔄 Testing '+provider+'...');
+  setTimeout(()=>{
+    const saved=JSON.parse(localStorage.getItem('api_key_status')||'{}');
+    saved[provider]='ok';
+    localStorage.setItem('api_key_status',JSON.stringify(saved));
+    toast('✅ '+provider+' connected!');
+    renderKeyStatus();
+    if(SB&&!isDemo)SB.from('api_keys').upsert({provider,status:'ok',updated:new Date().toISOString()});
+  },700);
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN: ALERT RULES
+// ═══════════════════════════════════════════════════
+function renderAlertRules(){
+  const el=document.getElementById('alert-rules');
+  if(!el)return;
+  const typeLabels={cost_spike:'💸 Cost Spike',budget:'📊 Budget',cpu:'⚡ CPU High',memory:'💾 Memory',agent_down:'📡 Agent Down'};
+  el.innerHTML=alertRules.map(r=>`<div class="al-card ${r.triggered?'triggered':''}">
+    <span style="font-size:18px">${typeLabels[r.type]?.split(' ')[0]||'🔔'}</span>
+    <div style="flex:1">
+      <div style="font-size:12.5px;font-weight:600">${typeLabels[r.type]||r.type} — ${r.threshold}${r.unit}</div>
+      <div style="font-size:11px;color:var(--tx2)">แจ้งไปที่ ${r.email} ${r.triggered?'<span style="color:var(--red)">• Triggered!</span>':''}</div>
+    </div>
+    <label class="toggle"><input type="checkbox" ${r.active?'checked':''} onchange="toggleAlert(${r.id},this.checked)"><span class="tog-sl"></span></label>
+    <button class="btn btn-red btn-sm" onclick="delAlert(${r.id})">🗑</button>
+  </div>`).join('');
+}
+
+function toggleAlert(id,v){const a=alertRules.find(r=>r.id===id);if(a){a.active=v;toast(v?'✓ Alert เปิด':'Alert ปิด');}}
+
+async function saveAlert(){
+  const rule={id:Date.now(),type:document.getElementById('al-type').value,threshold:+document.getElementById('al-th').value,unit:document.getElementById('al-unit').value,email:document.getElementById('al-email').value,active:true,triggered:false,msg:''};
+  await saveSB('alert_rules',rule,null);
+  alertRules.push(rule);
+  closeModal('m-alert');
+  toast('✓ Alert rule บันทึกแล้ว');
+  renderAlertRules();
+}
+
+async function delAlert(id){
+  if(!confirm('ลบ alert rule นี้?'))return;
+  await deleteSB('alert_rules',id);
+  alertRules=alertRules.filter(a=>a.id!==id);
+  toast('✓ ลบแล้ว');renderAlertRules();
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+function calcTCO() {
+  const vms = +(document.getElementById('tco-vms')?.value||6);
+  const uih = +(document.getElementById('tco-uih')?.value||72000);
+  const vcpu = +(document.getElementById('tco-vcpu')?.value||4);
+  const ram  = +(document.getElementById('tco-ram')?.value||16);
+  const rate = +(document.getElementById('tco-rate')?.value||35);
+  const eng  = +(document.getElementById('tco-eng')?.value||80000);
+  const cpu  = +(document.getElementById('tco-cpu')?.value||35);
+
+  const awsMo  = vms*vcpu*4.35*rate;
+  const gcpMo  = vms*vcpu*3.88*rate;
+  const oraMo  = vms*vcpu*2.90*rate;
+  const sup = 3500;
+
+  const rows = [
+    ['ค่า VM/Compute',uih,awsMo,gcpMo,oraMo],
+    ['ค่า Admin/DevOps',0,eng,eng,eng],
+    ['ค่า Support Plan',0,sup,sup*0.8,sup*0.5],
+    ['ค่า Monitoring',uih*0.05,awsMo*0.1,gcpMo*0.1,oraMo*0.1],
+  ];
+
+  const totals = rows.reduce((acc,r)=>acc.map((v,i)=>v+(r[i+1]||0)),[0,0,0,0]);
+  const tbody = document.getElementById('tco-tbody');
+  if (tbody) {
+    const fmt = n=>'฿'+Math.round(n).toLocaleString();
+    tbody.innerHTML = rows.map(r=>`<tr>
+      <td style="font-size:12px">${r[0]}</td>
+      <td class="num">${fmt(r[1])}</td>
+      <td class="num">${fmt(r[2])}</td>
+      <td class="num">${fmt(r[3])}</td>
+      <td class="num">${fmt(r[4])}</td>
+    </tr>`).join('') + `<tr style="font-weight:700;background:var(--surface2)">
+      <td>รวม TCO/เดือน</td>
+      <td class="num" style="color:var(--violet)">฿${Math.round(totals[0]).toLocaleString()}</td>
+      <td class="num">฿${Math.round(totals[1]).toLocaleString()}</td>
+      <td class="num">฿${Math.round(totals[2]).toLocaleString()}</td>
+      <td class="num ${totals[3]<totals[0]?'best':''}">฿${Math.round(totals[3]).toLocaleString()}</td>
+    </tr>`;
+  }
+
+  const verd = document.getElementById('tco-verdict');
+  if (verd) {
+    const cheapest = Math.min(...totals.slice(1));
+    const save = ((totals[0]-cheapest)/totals[0]*100).toFixed(0);
+    const msg = cpu<20 ? `⚠️ CPU Utilization ต่ำมาก (${cpu}%) — ควร consolidate/rightsize ก่อนตัดสินใจย้าย` :
+      totals[0] > cheapest*1.3 ? `💡 ย้ายไป Public Cloud อาจประหยัดได้ ~${save}%/เดือน แต่ต้องบวกค่า migration` :
+      `✅ TCO ใกล้เคียงกัน — UIH มีข้อได้เปรียบด้าน Thai support และ managed service`;
+    const color = cpu<20?'var(--red)':totals[0]>cheapest*1.3?'var(--amber)':'var(--emerald)';
+    verd.style.borderColor = color+'44';
+    verd.innerHTML = `<div style="font-size:13px;font-weight:600;color:${color}">${msg}</div>`;
+  }
+
+  mkChart('c-tco-bar','bar',['UIH','AWS Bangkok','GCP','Oracle'],
+    [{label:'TCO/เดือน (THB)',data:totals,backgroundColor:['#8b5cf699','#ff990099','#4285f499','#ef444499'],borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'฿'+Math.round(v/1000)+'k'}}}}
+  );
+}
+
+function buildMigrationUI() {
+  const c = document.getElementById('mq-container');
+  if (!c) return;
+  c.innerHTML = MQ_QUESTIONS.map((q,i)=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.6rem .85rem">
+      <div style="display:flex;gap:.65rem;align-items:start">
+        <select id="mq${i}" onchange="calcMigration()" style="width:58px;flex-shrink:0;font-family:var(--mono);font-size:12px;padding:.25rem .35rem">
+          <option value="0">0</option><option value="1">1</option>
+        </select>
+        <div>
+          <div style="font-size:12.5px;font-weight:600;margin-bottom:.15rem">${q.q}</div>
+          <div style="font-size:10.5px;color:${q.dir>0?'var(--emerald)':'var(--amber)'}">${q.hint}</div>
+        </div>
+        <span class="badge ${q.dir>0?'b-blue':'b-amber'}" style="flex-shrink:0;font-size:9px;margin-left:auto">W:${q.w}</span>
+      </div>
+    </div>`).join('');
+  calcMigration();
+}
+
+function calcMigration() {
+  let score = 0, stayPts = 0, movePts = 0;
+  MQ_QUESTIONS.forEach((q,i)=>{
+    const v = +(document.getElementById('mq'+i)?.value||0);
+    if (v) { score += q.w*q.dir; if (q.dir>0) stayPts+=q.w; else movePts+=q.w; }
+  });
+  const el = document.getElementById('mq-score');
+  if (el) { el.textContent = (score>0?'+':'')+score; el.style.color = score>0?'var(--emerald)':score<0?'var(--red)':'var(--blue)'; }
+
+  const strat = score>=5 ? {t:'🏠 STAY on UIH',d:'ปัจจัยชี้ไปทางนี้ชัดเจน — ปรับ optimize ที่ UIH แทน',c:'var(--emerald)'}
+    : score>=-4 ? {t:'🔄 HYBRID Strategy',d:'UIH: sensitive/PDPA data | Public Cloud: dev/test/analytics/containers',c:'var(--amber)'}
+    : score>=-9 ? {t:'☁️ Migrate (ค่อยๆ ย้าย)',d:'วางแผน 6-12 เดือน เริ่มจาก non-critical workload ก่อน',c:'var(--cyan)'}
+    : {t:'🚀 Migrate NOW',d:'ควรย้ายทั้งหมดใน 3-6 เดือน — UIH ไม่เหมาะกับ use case ปัจจุบัน',c:'var(--red)'};
+
+  const verd = document.getElementById('mq-verdict');
+  if (verd) {
+    verd.style.borderColor = strat.c+'44';
+    verd.innerHTML = `<div style="font-size:14px;font-weight:700;color:${strat.c};margin-bottom:.35rem">${strat.t}</div><div style="font-size:12px;color:var(--text2)">${strat.d}</div>`;
+  }
+
+  const guide = document.getElementById('mq-guide');
+  if (guide) guide.innerHTML = [
+    {s:'≥ +5',t:'🏠 Stay on UIH',d:'Optimize และ negotiate volume discount',c:'b-green'},
+    {s:'-4 ถึง +4',t:'🔄 Hybrid',d:'UIH: PDPA + sensitive | Cloud: scale + managed',c:'b-amber'},
+    {s:'-9 ถึง -5',t:'☁️ Migrate ค่อยๆ',d:'6-12 เดือน phase migration',c:'b-blue'},
+    {s:'≤ -10',t:'🚀 Migrate Now',d:'ย้ายทั้งหมดใน 3-6 เดือน',c:'b-red'},
+  ].map(r=>`<div style="display:flex;gap:.6rem;padding:.35rem .65rem;border-radius:6px;border:1px solid var(--border)"><span class="badge ${r.c}" style="min-width:80px;text-align:center">${r.s}</span><span style="font-weight:600">${r.t}</span><span style="color:var(--text2)">${r.d}</span></div>`).join('');
+
+  mkChart('c-migrate','bar',['Stay UIH','Move Cloud'],
+    [{data:[stayPts,movePts],backgroundColor:['#10b98199','#f59e0b99'],borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'W:'+v}}}}
+  );
+}
+
+function renderThaiCards() {
+  const c = document.getElementById('thai-cards');
+  if (!c) return;
+  c.innerHTML = DB.thaiProviders.map(p=>`
+    <div class="card">
+      <div style="display:flex;gap:.75rem;margin-bottom:.85rem">
+        <div style="width:38px;height:38px;border-radius:9px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">${p.icon}</div>
+        <div><div style="font-weight:700;font-size:13.5px">${p.name}</div><div style="font-size:11px;color:var(--text2)">${p.type}</div></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.65rem">
+        <span class="badge b-amber">${p.tier}</span>
+        ${p.dc.map(d=>`<span class="badge b-gray">${d}</span>`).join('')}
+        ${p.pdpa?'<span class="badge b-green">PDPA ✓</span>':''}
+      </div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:.65rem">${p.desc}</div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+        ${p.aws?'<span class="badge b-aws">AWS Partner</span>':''}
+        ${p.azure?'<span class="badge b-azure">Azure Partner</span>':''}
+        ${p.gcp?'<span class="badge b-gcp">GCP Partner</span>':''}
+        ${!p.aws&&!p.azure&&!p.gcp?'<span class="badge b-uih">🇹🇭 Local Only (Sovereign)</span>':''}
+      </div>
+    </div>`).join('');
+}
+
+function renderResellers(f) {
+  resellerFilter = f||resellerFilter;
+  const data = resellerFilter==='all' ? RESELLERS :
+    resellerFilter==='multi' ? RESELLERS.filter(r=>r.clouds.length>=3) :
+    RESELLERS.filter(r=>r.clouds.includes(resellerFilter));
+  const c = document.getElementById('reseller-cards');
+  if (!c) return;
+  c.innerHTML = data.map(r=>`
+    <div class="card card-sm">
+      <div style="font-weight:700;font-size:13px;margin-bottom:.3rem">${r.name}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">${r.tier}</div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+        ${r.clouds.map(c=>`<span class="badge ${c==='aws'?'b-aws':c==='azure'?'b-azure':'b-gcp'}">${c.toUpperCase()}</span>`).join('')}
+        <span class="badge b-gray" style="margin-left:auto">${r.type}</span>
+      </div>
+    </div>`).join('');
+}
+
+function setResellerFilter(f,btn) {
+  document.querySelectorAll('#p-resellers .fc').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderResellers(f);
+}
+
+function ddRegen() {
+  const provider = document.getElementById('dd-provider')?.value||'uih';
+  const env      = document.getElementById('dd-env')?.value||'prod';
+  const service  = document.getElementById('dd-service')?.value||'my-service';
+  const team     = document.getElementById('dd-team')?.value||'devops';
+  const region   = document.getElementById('dd-region')?.value||'th-bkk';
+  const project  = document.getElementById('dd-project')?.value||'cloud-platform';
+  const apiKey   = document.getElementById('dd-apikey')?.value||'<DD_API_KEY>';
+  const site     = document.getElementById('dd-site')?.value||'datadoghq.com';
+  const aws      = document.getElementById('dd-aws')?.value||'';
+  const az       = document.getElementById('dd-az')?.value||'';
+  const gcp      = document.getElementById('dd-gcp')?.value||'';
+  const prism    = document.getElementById('dd-prism')?.value||'';
+  const chips    = [...document.querySelectorAll('#p-datadog .fc.on')].map(c=>c.textContent.trim());
+  const hasLogs = chips.includes('Logs'), hasAPM = chips.includes('APM');
+  const hasProc = chips.includes('Process'), hasNet = chips.includes('Network');
+
+  ddFiles.yaml = `# datadog.yaml — Generated by CloudLens Platform
+# Provider: ${provider} | Env: ${env} | ${new Date().toISOString().slice(0,10)}
+
+api_key: ${apiKey}
+site: ${site}
+hostname_fqdn: true
+
+tags:
+  - cloud_provider:${provider}
+  - environment:${env}
+  - service:${service}
+  - team:${team}
+  - region:${region}
+  - project:${project}
+
+min_collection_interval: 15
+${hasLogs?`
+logs_enabled: true
+logs_config:
+  container_collect_all: true
+  auto_multi_line_detection: true`:''}
+${hasAPM?`
+apm_config:
+  enabled: true
+  env: ${env}
+  max_traces_per_second: 50`:''}
+${hasProc?`
+process_config:
+  enabled: true
+  process_discovery:
+    enabled: true`:''}
+${hasNet?`
+network_config:
+  enabled: true`:''}
+${['aws','azure','gcp'].includes(provider)?`# ${provider.toUpperCase()} specific
+${provider==='aws'?'collect_ec2_tags: true':provider==='gcp'?'gce_metadata_timeout: 1000ms':'azure_hostname_style: os'}`:
+`# Local Thai Cloud — Agent is primary data collector
+# Use billing_pipeline.py for cost metrics`}`;
+
+  ddFiles.install = `#!/bin/bash
+# install_agent.sh — CloudLens Generated
+set -euo pipefail
+DD_API_KEY="\${DD_API_KEY:-${apiKey}}"
+DD_SITE="\${DD_SITE:-${site}}"
+PROVIDER="${provider}"; ENV="${env}"; SERVICE="${service}"; TEAM="${team}"
+
+DD_INSTALL_ONLY=true DD_API_KEY="$DD_API_KEY" DD_SITE="$DD_SITE" \\
+  bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
+
+cat > /etc/datadog-agent/datadog.yaml << EOF
+api_key: $DD_API_KEY
+site: $DD_SITE
+hostname_fqdn: true
+tags:
+  - cloud_provider:$PROVIDER
+  - environment:$ENV
+  - service:$SERVICE
+  - team:$TEAM
+  - region:${region}
+logs_enabled: ${hasLogs}
+apm_config:
+  enabled: ${hasAPM}
+  env: $ENV
+EOF
+
+systemctl enable datadog-agent && systemctl restart datadog-agent
+systemctl is-active --quiet datadog-agent && echo "✅ Agent OK" || echo "❌ Check logs"`;
+
+  ddFiles.billing = `#!/usr/bin/env python3
+"""billing_pipeline.py — CloudLens Multi-Cloud Billing"""
+import os, csv, time, requests
+
+DD_API_KEY = os.environ.get("DD_API_KEY", "${apiKey}")
+DD_SITE    = os.environ.get("DD_SITE", "${site}")
+DD_URL     = f"https://api.{DD_SITE}/api/v2/series"
+HEADERS    = {"DD-API-KEY": DD_API_KEY, "Content-Type": "application/json"}
+
+def send(name, value, tags):
+    requests.post(DD_URL, headers=HEADERS, json={"series":[{
+        "metric": name, "type": 0,
+        "points": [{"timestamp": int(time.time()), "value": float(value)}],
+        "tags": tags
+    }]}, timeout=10)
+
+${prism?`def collect_nutanix():
+    import urllib3; urllib3.disable_warnings()
+    r = requests.post("https://${prism}:9440/api/nutanix/v3/vms/list",
+        auth=("admin", os.environ.get("NUTANIX_PASS", "")),
+        verify=False, json={"kind": "vm", "length": 500}, timeout=15)
+    for vm in r.json().get("entities", []):
+        spec = vm.get("spec", {}).get("resources", {})
+        stat = vm.get("status", {}).get("resources", {})
+        name = vm.get("spec", {}).get("name", "?").lower().replace(" ", "_")
+        tags = ["cloud_provider:uih", f"vm_name:{name}", "region:th-bkk"]
+        vcpus = spec.get("num_vcpus_per_socket", 0) * spec.get("num_sockets", 1)
+        send("cloud.nutanix.vm.vcpus", vcpus, tags)
+        send("cloud.nutanix.vm.power_on",
+             1 if stat.get("power_state") == "ON" else 0, tags)
+        cpu_pct = stat.get("stats", {}).get("hypervisor_cpu_usage_ppm", 0) / 10000
+        if cpu_pct: send("cloud.nutanix.vm.cpu_pct", cpu_pct, tags)
+`:'# Configure Nutanix Prism host above for UIH metrics\n'}
+def collect_uih_csv(csv_path="/tmp/uih_invoice.csv"):
+    try:
+        with open(csv_path, encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                thb = float(row.get("Cost (THB)", 0))
+                vm  = row.get("VM Name", "unknown").lower().replace(" ", "_")
+                tags = ["cloud_provider:uih", f"vm_name:{vm}", "region:th-bkk"]
+                send("cloud.billing.cost.thb", thb, tags)
+                send("cloud.billing.cost.usd", thb / 35, tags)
+    except FileNotFoundError:
+        pass  # No CSV file yet
+
+if __name__ == "__main__":
+    collect_uih_csv()
+    ${prism?'collect_nutanix()':'# Add more collectors above'}
+    print("Pipeline complete")`;
+
+  ddFiles.tf = `# terraform.tfvars — CloudLens Generated
+# DO NOT commit to git!
+
+datadog_api_key = "${apiKey}"
+datadog_app_key = "<YOUR_DD_APP_KEY>"
+datadog_site    = "${site}"
+
+# AWS
+${aws?`aws_account_id = "${aws}"`:'# aws_account_id = "<AWS_ACCOUNT_ID>"'}
+aws_region      = "ap-southeast-7"
+
+# Azure
+${az?`azure_tenant_id = "${az}"`:'# azure_tenant_id = "<TENANT_ID>"'}
+azure_location  = "southeastasia"
+
+# GCP
+${gcp?`gcp_project_id = "${gcp}"`:'# gcp_project_id = "<PROJECT_ID>"'}
+gcp_region      = "asia-southeast1"
+
+# Common Tags
+environment = "${env}"
+team        = "${team}"`;
+
+  document.getElementById('dd-code').textContent = ddFiles[ddCurrentFile]||'';
+}
+
+function ddTab(file, el) {
+  ddCurrentFile = file;
+  document.querySelectorAll('#p-datadog .ct').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('dd-code').textContent = ddFiles[file]||'';
+}
+
+function ddCopy() { navigator.clipboard.writeText(ddFiles[ddCurrentFile]||'').then(()=>toast('✓ Copied '+ddCurrentFile)); }
+
+async function ddDownload() {
+  const zip = new JSZip();
+  const f = zip.folder('datadog-multicloud');
+  f.folder('configs').file('datadog.yaml', ddFiles.yaml||'');
+  f.folder('scripts').file('install_agent.sh', ddFiles.install||'');
+  f.folder('scripts').file('billing_pipeline.py', ddFiles.billing||'');
+  f.folder('terraform').file('terraform.tfvars', ddFiles.tf||'');
+  f.file('README.md',`# Datadog Multi-Cloud Config — Generated by CloudLens\n## Files\n- configs/datadog.yaml\n- scripts/install_agent.sh\n- scripts/billing_pipeline.py\n- terraform/terraform.tfvars`);
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'datadog-multicloud.zip';
+  a.click();
+  toast('⬇ Downloaded datadog-multicloud.zip');
+}
+
+function calcEgress() {
+  const tb = +(document.getElementById('egress-slider')?.value||50);
+  const valEl = document.getElementById('egress-val');
+  if (valEl) valEl.textContent = tb + ' TB';
+  const results = document.getElementById('egress-results');
+  if (!results) return;
+  results.innerHTML = DB.network.map(n=>{
+    let cost;
+    if (n.free_gb >= tb*1000) { cost = 0; }
+    else {
+      const freeGB = n.free_gb * 1000;
+      const billableGB = Math.max(0, tb*1000 - freeGB);
+      const first10k = Math.min(billableGB, 10000);
+      const next40k = Math.max(0, Math.min(billableGB-10000, 40000));
+      const over50k = Math.max(0, billableGB-50000);
+      cost = first10k*n.first10 + next40k*n.next40 + over50k*n.over50;
+    }
+    const minCost = 0.4;
+    const badge = cost===0?'b-green':cost<50?'b-green':cost<500?'b-amber':'b-red';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;background:var(--surface2);border-radius:6px;font-size:12px">
+      ${pBadge(n.p)}
+      <span class="badge ${badge}" style="font-family:var(--mono)">${cost===0?'FREE!':'$'+cost.toFixed(0)+'/mo'}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderStorage(filter) {
+  storageFilter = filter||storageFilter;
+  if (!DB || !DB.storage) return;
+  const data = storageFilter==='all' ? DB.storage : DB.storage.filter(r=>r.tier===storageFilter);
+  const tbody = document.getElementById('storage-tbody');
+  if (!tbody) return;
+  const minTb10 = Math.min(...data.map(d=>d.tb10));
+  tbody.innerHTML = data.map(r=>`<tr>
+    <td>${pBadge(r.p)}</td>
+    <td style="font-size:12px">${r.s}</td>
+    <td class="num">$${r.pgb}</td>
+    <td class="num">$${r.tb1}</td>
+    <td class="num ${r.tb10===minTb10?'best':''}" >$${r.tb10}</td>
+    <td class="num">$${r.tb100}</td>
+    <td style="font-size:11px;color:var(--emerald)">${r.ret}</td>
+    <td><span class="badge b-gray">${r.tier}</span></td>
+  </tr>`).join('');
+  renderStorageChart();
+}
+
+function setStorageFilter(f, btn) {
+  document.querySelectorAll('#p-storage .fc').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderStorage(f);
+}
+
+function renderNetwork() {
+  const tbody = document.getElementById('network-tbody');
+  if (!tbody) return;
+  if (!DB || !DB.network) return;
+  const maxEg = Math.max(...DB.network.map(n=>n.egress50));
+  tbody.innerHTML = DB.network.map(r=>{
+    const pct = Math.round((1-r.egress50/maxEg)*100);
+    return `<tr>
+      <td>${pBadge(r.p)}</td>
+      <td class="num ${r.first10<0.01?'best':r.first10>0.08?'worst':''}">${'$'+r.first10+'/GB'}</td>
+      <td class="num">${'$'+r.next40+'/GB'}</td>
+      <td class="num">${'$'+r.over50+'/GB'}</td>
+      <td style="font-size:11px">${r.inter===0?'<span class="badge b-green">FREE</span>':'$'+r.inter+'/GB'}</td>
+      <td style="font-size:11px;color:var(--emerald)">${r.free_gb>=10?'🏆 '+r.free_gb+' TB':r.free_gb+' GB'}</td>
+      <td class="num ${r.egress50===Math.min(...DB.network.map(n=>n.egress50))?'best':r.egress50===maxEg?'worst':''}">${'$'+r.egress50.toFixed(0)+'/mo'}</td>
+      <td><span class="badge ${pct>80?'b-green':pct>40?'b-amber':'b-gray'}">${pct?'Save '+pct+'%':'Baseline'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDiscount() {
+  const tbody = document.getElementById('discount-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = DB.discounts.map(r=>`<tr>
+    <td>${pBadge(r.p)}</td>
+    <td class="num">${r.p==='Oracle'?'<span class="badge b-green">🏆 ถูกสุด</span>':r.p==='DigitalOcean'?'Flat':'Base'}</td>
+    <td class="num ${r.yr1pct>=57?'best':''}">${r.yr1pct?'-'+r.yr1pct+'%':'—'}</td>
+    <td class="num ${r.yr3pct>=60?'best':''}">${r.yr3pct?'-'+r.yr3pct+'%':'—'}</td>
+    <td style="font-size:11px">${r.spot===10?'<span style="color:var(--emerald)">ลด ~90%</span>':r.spot===0?'<span style="color:var(--text3)">ไม่มี</span>':'ลด ~'+Math.round(100-r.spot)+'%'}</td>
+    <td style="font-size:11px">${r.p==='GCP'?'<span style="color:var(--emerald)">🏆 SUD 30% Auto</span>':r.p==='Azure'?'Hybrid Benefit':'—'}</td>
+    <td class="num ${r.p==='Azure'?'best':''}">${r.p==='AWS'?'~20% Graviton':r.p==='Azure'?'🏆 ~65% Ampere':r.p==='GCP'?'~20% T2A':r.p==='Oracle'?'Free Arm':'—'}</td>
+  </tr>`).join('');
+}
+
+function dzOver(e){e.preventDefault();document.getElementById('dropzone')?.classList.add('dragover');}
+
+function dzLeave(){document.getElementById('dropzone')?.classList.remove('dragover');}
+
+function dzDrop(e){e.preventDefault();dzLeave();const f=e.dataTransfer.files[0];if(f)loadFile(f);}
+
+function loadFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  document.getElementById('file-info').innerHTML = `<div style="color:var(--blue);font-weight:600">${file.name}</div><div>Size: ${(file.size/1024).toFixed(1)} KB | Type: ${ext.toUpperCase()}</div>`;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      uploadedWB = wb;
+      const sel = document.getElementById('sheet-selector');
+      const sels = document.getElementById('sheet-select');
+      if (sel&&sels) {
+        sel.style.display = 'block';
+        sels.innerHTML = wb.SheetNames.map(s=>`<option value="${s}">${s}</option>`).join('');
+        loadSheet();
+      }
+    } catch(err) { toast('ไม่สามารถอ่านไฟล์ได้: '+err.message, 'err'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadSheet() {
+  if (!uploadedWB) return;
+  const sheet = document.getElementById('sheet-select')?.value;
+  if (!sheet) return;
+  currentSheet = sheet;
+  const ws = uploadedWB.Sheets[sheet];
+  const json = XLSX.utils.sheet_to_json(ws, {header:1,defval:''});
+  uploadedData = json.filter(r=>r.some(c=>c!==''));
+
+  const thead = document.getElementById('parsed-thead');
+  const tbody = document.getElementById('parsed-tbody');
+  if (!thead||!tbody) return;
+
+  const headers = uploadedData[0]||[];
+  thead.innerHTML = `<tr>${headers.slice(0,10).map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  tbody.innerHTML = uploadedData.slice(1,21).map(row=>
+    `<tr>${row.slice(0,10).map(c=>`<td style="font-size:12px">${c}</td>`).join('')}</tr>`
+  ).join('');
+
+  document.getElementById('parsed-section').style.display='block';
+  autoAnalyze();
+}
+
+function autoAnalyze() {
+  const c = document.getElementById('auto-analysis');
+  if (!c||!uploadedData.length) return;
+  const numCols = uploadedData[0].length;
+  const numRows = uploadedData.length;
+  const hasNumbers = uploadedData.slice(1).some(r=>r.some(c=>typeof c==='number'&&c>0));
+  const nums = uploadedData.slice(1).flatMap(r=>r.filter(c=>typeof c==='number'&&c>0));
+  const total = nums.reduce((s,n)=>s+n,0);
+  const avg = nums.length ? total/nums.length : 0;
+  const max = nums.length ? Math.max(...nums) : 0;
+
+  c.innerHTML = [
+    {label:'จำนวน Rows',val:numRows-1,icon:'📝'},
+    {label:'จำนวน Columns',val:numCols,icon:'📊'},
+    {label:'Numeric Values',val:nums.length,icon:'🔢'},
+    {label:'Total / Sum',val:'$'+total.toLocaleString(undefined,{maximumFractionDigits:0}),icon:'💰'},
+    {label:'Average',val:'$'+avg.toFixed(0),icon:'📈'},
+    {label:'Max Value',val:'$'+max.toFixed(0),icon:'⬆️'},
+  ].map(item=>`
+    <div class="card card-sm" style="display:flex;gap:.65rem;align-items:center">
+      <div style="font-size:22px">${item.icon}</div>
+      <div><div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase">${item.label}</div>
+      <div style="font-size:16px;font-weight:700;font-family:var(--mono)">${item.val}</div></div>
+    </div>`).join('');
+}
+
+function loadSample(type) {
+  const sample = type==='finops' ? [
+    ['รายการ','ค่าใช้จ่าย/เดือน ($)','หมายเหตุ'],
+    ['Compute (VM/EC2)',5000,'EC2/VM ทั้งหมด'],
+    ['Object Storage',800,'S3/Blob/GCS'],
+    ['Network Egress',1200,'ค่าส่งข้อมูลออก'],
+    ['Managed Database',1500,'RDS/Azure SQL'],
+    ['Serverless',200,'Lambda/Functions'],
+    ['Other',300,'CDN, monitoring'],
+    ['รวม',9000,'ก่อน FinOps'],
+  ] : type==='uih' ? [
+    ['VM Name','Spec','vCPU','RAM (GB)','Cost (THB)','CPU Util (%)','Status'],
+    ['vm-web-01','Standard','4','16','12000','25','Running'],
+    ['vm-api-01','Standard','4','16','12000','45','Running'],
+    ['vm-db-01','Memory','8','32','24000','60','Running'],
+    ['vm-dev-01','Standard','2','8','6500','5','Running'],
+    ['vm-test-01','Standard','2','8','6500','2','Stopped'],
+    ['vm-batch-01','Compute','8','16','18000','35','Running'],
+  ] : [
+    ['Provider','Service','Region','Usage (GB)','Cost (USD)','Month'],
+    ['AWS','EC2','ap-southeast-7',null,2400,'2025-12'],
+    ['AWS','S3','ap-southeast-7',1200,28,'2025-12'],
+    ['AWS','RDS','ap-southeast-7',null,580,'2025-12'],
+    ['AWS','CloudFront','global',8000,420,'2025-12'],
+    ['Azure','VMs','southeastasia',null,1100,'2025-12'],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(sample);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  uploadedWB = wb;
+  document.getElementById('file-info').innerHTML = `<div style="color:var(--blue);font-weight:600">Sample Data: ${type}</div>`;
+  const sel = document.getElementById('sheet-selector');
+  const sels = document.getElementById('sheet-select');
+  if (sel&&sels) {
+    sel.style.display = 'block';
+    sels.innerHTML = `<option>Data</option>`;
+  }
+  uploadedData = sample;
+  const thead = document.getElementById('parsed-thead');
+  const tbody = document.getElementById('parsed-tbody');
+  if (thead&&tbody) {
+    thead.innerHTML = `<tr>${sample[0].map(h=>`<th>${h}</th>`).join('')}</tr>`;
+    tbody.innerHTML = sample.slice(1).map(r=>`<tr>${r.map(c=>`<td style="font-size:12px">${c??''}</td>`).join('')}</tr>`).join('');
+    document.getElementById('parsed-section').style.display='block';
+    autoAnalyze();
+  }
+}
+
+async function runAI() {
+  const key = document.getElementById('claude-key')?.value || localStorage.getItem('cl_key');
+  if (!key) { toast('ใส่ Claude API key ก่อน', 'err'); return; }
+  if (!uploadedData.length) { toast('Upload ไฟล์ก่อน', 'err'); return; }
+
+  const type = document.getElementById('analysis-type')?.value||'cost';
+  const btn = document.getElementById('ai-btn-text');
+  if (btn) btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  const box = document.getElementById('ai-result-box');
+  const txt = document.getElementById('ai-result-text');
+  if (box) box.style.display = 'block';
+  if (txt) txt.textContent = 'กำลังวิเคราะห์ข้อมูล...';
+
+  const csvPreview = uploadedData.slice(0,20).map(r=>r.join(',')).join('\n');
+  const prompts = {
+    cost: `วิเคราะห์ค่าใช้จ่าย Cloud นี้: หาจุดที่จ่ายเกิน, hidden costs, และโอกาสประหยัดสูงสุด 5 อันดับ`,
+    compare: `เปรียบเทียบข้อมูลนี้กับราคา AWS Bangkok, GCP, Azure, Oracle ในปี 2026 แนะนำ provider ที่ดีที่สุด`,
+    finops: `ให้คำแนะนำ FinOps 5 ข้อที่เหมาะกับข้อมูลนี้ที่สุด พร้อมประมาณการประหยัดเป็น % หรือ USD`,
+    migrate: `วิเคราะห์ว่าควรย้ายจาก UIH ไป Public Cloud ไหน หรือควรอยู่ที่เดิม พร้อม rationale`,
+    optimize: `สร้าง optimization roadmap 90 วัน สำหรับข้อมูล cloud cost นี้ แบ่งเป็น Week 1-4, Month 2, Month 3`,
+  };
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:'คุณเป็น FinOps expert ที่เชี่ยวชาญด้าน Cloud Cost Optimization ในไทย ตอบเป็นภาษาไทย กระชับ ชัดเจน',
+        messages:[{role:'user',content:`${prompts[type]}\n\nข้อมูล:\n\`\`\`\n${csvPreview}\n\`\`\``}]
+      })
+    });
+    const data = await resp.json();
+    if (txt) txt.textContent = data.content?.[0]?.text || 'ไม่ได้รับ response';
+    if (btn) btn.textContent = '🤖 Analyze with AI';
+  } catch(e) {
+    if (txt) txt.textContent = 'Error: '+e.message;
+    if (btn) btn.textContent = '🤖 Analyze with AI';
+    toast('API Error: '+e.message, 'err');
+  }
+}
+
+function renderStorageChart() {
+  const tb = +(document.getElementById('storage-tb')?.value||10);
+  const key = tb===1?'tb1':tb===10?'tb10':'tb100';
+  const standard = DB.storage.filter(s=>s.tier==='standard');
+  const title = document.getElementById('storage-chart-title');
+  if (title) title.textContent = `📊 Cost ที่ ${tb} TB/mo`;
+  mkChart('c-storage-bar','bar',
+    standard.map(s=>s.p+' '+s.s.split(' ')[0]),
+    [{label:`$/mo at ${tb}TB`,data:standard.map(s=>s[key]),backgroundColor:standard.map(s=>(PC[s.p]||'#aaa')+'99'),borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v}}}}
+  );
+}
+
+function quickCompare() {
+  const vcpu = +(document.getElementById('qc-vcpu')?.value||4);
+  const ram  = +(document.getElementById('qc-ram')?.value||16);
+  const model = document.getElementById('qc-model')?.value||'od';
+  const region = document.getElementById('qc-region')?.value||'bkk';
+  const showUIH = document.getElementById('qc-uih')?.value==='yes';
+
+  const rmult = {us:1,bkk:.907,sg:1.207,in:.771}[region]||1;
+  const row = DB.uih.find(r=>r.spec.includes(`${vcpu} vCPU/${ram}GB`))||{usd:vcpu*40,aws:vcpu*18,az:vcpu*17,gcp:vcpu*16,ora:vcpu*12,do:vcpu*8};
+
+  const cfgs = [
+    ...(showUIH?[{id:'UIH',p:'UIH',od:row.usd||vcpu*40,ri:row.usd||vcpu*40}]:[]),
+    {id:'AWS',p:'AWS',od:(row.aws||vcpu*18)*rmult,ri:(row.aws||vcpu*18)*rmult*.64},
+    {id:'Azure',p:'Azure',od:(row.az||vcpu*17)*rmult,ri:(row.az||vcpu*17)*rmult*.60},
+    {id:'GCP',p:'GCP',od:(row.gcp||vcpu*16)*rmult,ri:(row.gcp||vcpu*16)*rmult*.57},
+    {id:'Oracle',p:'Oracle',od:(row.ora||vcpu*12)*rmult,ri:(row.ora||vcpu*12)*rmult*.70},
+    {id:'DigitalOcean',p:'DigitalOcean',od:(row.do||vcpu*8)*rmult,ri:(row.do||vcpu*8)*rmult},
+  ];
+  const key = model==='od'?'od':'ri';
+  const minPrice = Math.min(...cfgs.map(c=>c[key]));
+  const cards = document.getElementById('qc-cards');
+  if (cards) cards.innerHTML = cfgs.map(c=>{
+    const best = c[key]===minPrice;
+    return `<div class="card" style="${best?'border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)':''}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.6rem">
+        ${pBadge(c.p)}
+        ${best?'<span class="badge b-green">🏆 Best</span>':''}
+      </div>
+      <div style="font-family:var(--display);font-size:26px;font-weight:800;color:${best?'var(--emerald)':'var(--text)'};letter-spacing:-.04em">
+        ${c[key]===0?'FREE':'$'+c[key].toFixed(0)}
+      </div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:.25rem">/mo · ${vcpu}vCPU/${ram}GB</div>
+    </div>`;
+  }).join('');
+
+  mkChart('c-qc-bar','bar',cfgs.map(c=>c.id),
+    [{label:'$/mo',data:cfgs.map(c=>c[key]),backgroundColor:cfgs.map(c=>(PC[c.p]||'#8b5cf6')+'99'),borderWidth:0}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v===0?'FREE':'$'+v}}}}
+  );
+}
+
+function toggleCompare(id, cb) {
+  if (cb.checked) compareSet.add(id);
+  else compareSet.delete(id);
+  updateCompareBar();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compare-bar');
+  const items = document.getElementById('cbar-items');
+  if (!bar||!items) return;
+  if (compareSet.size>0) {
+    bar.classList.add('show');
+    items.innerHTML = [...compareSet].map(id=>`<div class="cbar-item">${id} <span class="cbar-remove" onclick="removeCompare('${id}')">×</span></div>`).join('');
+  } else { bar.classList.remove('show'); }
+}
+
+function removeCompare(id) { compareSet.delete(id); updateCompareBar(); }
+
+function clearCompare() { compareSet.clear(); updateCompareBar(); document.querySelectorAll('.compute-row input[type=checkbox]').forEach(c=>c.checked=false); }
+
+function selectAllRows(cb) { document.querySelectorAll('.compute-row input[type=checkbox]').forEach(c=>{c.checked=cb.checked;const tr=c.closest('tr');const lab=c.closest('td').textContent.trim();if(cb.checked)compareSet.add(lab);else compareSet.delete(lab);}); updateCompareBar(); }
+
+async function exportAll() {
+  const zip = new JSZip();
+  // Pricing data as CSV
+  const computeCSV = [['Provider','Instance','vCPU','RAM','OD/hr','OD/mo','RI/mo','RI%'],...DB.compute.map(r=>[r.p,r.i,r.vcpu,r.ram,r.od_hr,r.od_mo,r.ri_mo,r.ri_pct])].map(r=>r.join(',')).join('\n');
+  zip.file('compute_pricing.csv',computeCSV);
+  const uihCSV = [['Spec','UIH THB','UIH USD','AWS BKK','Azure','GCP','Oracle','DO'],...DB.uih.map(r=>[r.spec,r.thb,r.usd,r.aws,r.az,r.gcp,r.ora,r.do])].map(r=>r.join(',')).join('\n');
+  zip.file('uih_vs_cloud.csv',uihCSV);
+  zip.file('cloudlens_export.md',`# CloudLens Data Export\nExported: ${new Date().toISOString()}\n\n## Compute Pricing\n${computeCSV}`);
+  if (ddFiles.yaml) zip.file('datadog/datadog.yaml',ddFiles.yaml);
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cloudlens-export.zip';
+  a.click();
+  toast('⬇ Exported all data');
+}
+
+
+function saveClaude() {
+  const k = document.getElementById('claude-key')?.value;
+  if (k) localStorage.setItem('cl_key', k);
+}
+function testClaude() {
+  const key = document.getElementById('claude-key')?.value || localStorage.getItem('cl_key');
+  if (!key) { toast('ใส่ API key ก่อน', 'err'); return; }
+  toast('✓ API Key saved — ใช้ Analyze เพื่อวิเคราะห์');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initSB();
+  // Restore saved Claude key
+  const savedKey = localStorage.getItem('cl_key');
+  const keyInput = document.getElementById('claude-key');
+  if (savedKey && keyInput) keyInput.value = savedKey;
+
+  // ถ้ามี Supabase — ตรวจ session ที่ยังค้างอยู่
+  if (SB) {
+    SB.auth.getSession().then(({data}) => {
+      if (data?.session?.user) {
+        currentUser = data.session.user;
+        SB.from('user_roles').select('role').eq('email', currentUser.email).single()
+          .then(({data:rd}) => { currentRole = rd?.role || 'viewer'; enterApp(); })
+          .catch(() => { currentRole = 'viewer'; enterApp(); });
+      }
+      // ไม่มี session -> แสดง login page (default)
+    }).catch(() => {});
+  }
+  // ไม่มี Supabase -> แสดง login page (default)
+});</script>
+
+</body>
+</html>
